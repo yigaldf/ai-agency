@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>המסע לסוכנות AI</title>
+<style>:root{color-scheme:light;box-sizing:border-box}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<script src="/claude-shim.js"></script>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Heebo:wght@300;400;500;700&display=swap">
+<style>
+/* Layout: stacked panels, RTL Hebrew. Morning ritual first, then the three-level tree (system > task > sub-task), then history. */
+:root {
+  --bg: #F2F4F7;
+  --panel: #FFFFFF;
+  --panel-2: #E9ECF2;
+  --panel-3: #DFE3EB;
+  --fg: #1C2230;
+  --muted: #5F6878;
+  --line: #D6DAE3;
+  --accent: #1F6F5F;
+  --accent-soft: #D9ECE6;
+  --today: #B9771A;
+  --today-soft: #F7E7CB;
+  --done: #2E7D4F;
+  --done-soft: #D7EEDF;
+  --warn: #B23A3A;
+  --warn-soft: #F6D9D9;
+  --display: "Rubik", "Arial Hebrew", system-ui, sans-serif;
+  --body: "Heebo", "Arial Hebrew", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161D; --panel: #1A2029; --panel-2: #222A35; --panel-3: #2A3340; --fg: #E6E9EF; --muted: #9AA3B2; --line: #2E3744;
+    --accent: #5FBFA6; --accent-soft: #1B3A33; --today: #E0A64A; --today-soft: #3B2E17; --done: #5FC78A; --done-soft: #1B3A27; --warn: #E07070; --warn-soft: #3E1F1F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161D; --panel: #1A2029; --panel-2: #222A35; --panel-3: #2A3340; --fg: #E6E9EF; --muted: #9AA3B2; --line: #2E3744;
+  --accent: #5FBFA6; --accent-soft: #1B3A33; --today: #E0A64A; --today-soft: #3B2E17; --done: #5FC78A; --done-soft: #1B3A27; --warn: #E07070; --warn-soft: #3E1F1F;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; direction: rtl; margin: 0; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+h1, h2, h3, h4 { font-family: var(--display); margin: 0; text-wrap: balance; }
+h1 { font-size: 26px; font-weight: 700; }
+h2 { font-size: 18px; font-weight: 500; }
+h3 { font-size: 16px; font-weight: 500; }
+h4 { font-size: 15px; font-weight: 500; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.date { font-family: var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab { background: transparent; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 14px; font-family: var(--display); font-size: 15px; color: var(--muted); margin-bottom: -1px; }
+.tab.on { color: var(--fg); border-bottom-color: var(--accent); }
+/* coach chat */
+.quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.qchip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.chat { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; padding: 4px 2px; }
+.msg { max-width: 85%; padding: 9px 12px; border-radius: 12px; white-space: pre-wrap; line-height: 1.6; overflow-wrap: anywhere; }
+.msg.user { background: var(--accent); color: #fff; justify-self: start; border-bottom-right-radius: 4px; }
+.msg.coach { background: var(--panel-2); justify-self: end; border-bottom-left-radius: 4px; }
+.msg.thinking { color: var(--muted); font-style: italic; }
+.composer { display: grid; gap: 6px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.stat b { display: block; font-family: var(--display); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stat.hot b { color: var(--warn); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+.col { display: grid; gap: 8px; min-width: 0; align-content: start; }
+textarea, input[type=text] { width: 100%; font: inherit; color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; resize: vertical; }
+textarea { min-height: 56px; }
+textarea:focus, input:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button { font: inherit; cursor: pointer; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); padding: 6px 12px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+button.ghost { background: transparent; }
+button.tiny { padding: 2px 8px; font-size: 13px; line-height: 1.4; }
+button.trash { background: transparent; border-color: transparent; color: var(--muted); padding: 2px 6px; }
+button.trash:hover { color: var(--warn); background: var(--warn-soft); border-color: var(--warn-soft); }
+button:disabled { opacity: .55; cursor: default; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.list { display: grid; gap: 6px; }
+.pick { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; background: var(--panel-2); }
+.pick input { accent-color: var(--today); }
+.pick .path { color: var(--muted); font-size: 12px; }
+
+/* yesterday sliders */
+.yrow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
+.yrow .t { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.yrow .path { color: var(--muted); font-size: 12px; grid-column: 1; }
+.yrow .pct { grid-row: 1 / span 2; font-size: 18px; }
+.yrow input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 4px 0 0; }
+.yrow.done { background: var(--done-soft); }
+.yrow.done .pct { color: var(--done); }
+
+.feedback { background: var(--panel-2); border-radius: 8px; padding: 12px 14px; white-space: pre-wrap; min-height: 60px; line-height: 1.65; }
+.feedback.empty { color: var(--muted); }
+.wip-warn { background: var(--warn-soft); color: var(--warn); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+
+/* tree */
+.system { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); min-width: 0; }
+.system > summary { list-style: none; cursor: pointer; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.system > summary::-webkit-details-marker { display: none; }
+.chev { transition: transform .15s; color: var(--muted); font-size: 12px; }
+details[open] > summary .chev { transform: rotate(-90deg); }
+.system .body { padding: 0 16px 14px; display: grid; gap: 10px; }
+.task { border-radius: 8px; background: var(--panel-2); min-width: 0; }
+.task .thead { padding: 8px 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; }
+.task .thead .title { cursor: pointer; }
+.chevbtn { background: transparent; border: none; padding: 2px 4px; }
+.task.open .chev { transform: rotate(-90deg); }
+.task .thead .meta { grid-column: 2 / -1; }
+.task .tbody { padding: 0 10px 10px 10px; display: grid; gap: 6px; }
+.sub { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 6px 10px; border-radius: 6px; background: var(--panel-3); margin-inline-start: 18px; }
+.title { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.done .title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+.meta { display: flex; gap: 8px; align-items: center; grid-column: 1 / -1; }
+.ctl { display: flex; gap: 4px; align-items: center; }
+.bar { height: 6px; border-radius: 3px; background: var(--panel); overflow: hidden; flex: 1 1 100px; min-width: 50px; }
+.sub .bar { background: var(--panel-2); }
+.bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.bar.full i { background: var(--done); }
+.pct { font-family: var(--display); font-variant-numeric: tabular-nums; color: var(--muted); min-width: 3.5ch; text-align: left; }
+.chip { font-size: 12px; padding: 1px 8px; border-radius: 999px; font-weight: 500; white-space: nowrap; }
+.chip.today { background: var(--today-soft); color: var(--today); }
+.chip.done { background: var(--done-soft); color: var(--done); }
+.chip.active { background: var(--accent-soft); color: var(--accent); }
+.chip.hold { background: var(--panel); color: var(--muted); border: 1px solid var(--line); }
+/* links on every level */
+.links { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; grid-column: 1 / -1; }
+.lchip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 8px 2px 4px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--accent); text-decoration: none; max-width: 100%; }
+.sub .lchip { background: var(--panel-2); }
+.lchip:hover { border-color: var(--accent); }
+.lchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.lchip b { font-weight: 400; color: var(--muted); font-size: 11px; }
+.lchip .x { color: var(--muted); padding: 0 2px; border-radius: 999px; cursor: pointer; }
+.lchip .x:hover { color: var(--warn); }
+.addlink { font-size: 12px; padding: 1px 8px; color: var(--muted); background: transparent; border-style: dashed; }
+.linkform { display: flex; gap: 6px; flex-wrap: wrap; grid-column: 1 / -1; }
+.linkform input { flex: 1 1 140px; font-size: 13px; padding: 5px 8px; }
+.linkform input.url { flex: 2 1 220px; direction: ltr; text-align: left; }
+.add { display: flex; gap: 6px; }
+.add input { flex: 1; }
+.add.sub-add { margin-inline-start: 18px; }
+
+.history { display: grid; gap: 8px; }
+.day { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 4px; }
+.day .d { font-family: var(--display); font-variant-numeric: tabular-nums; }
+.day .fb { white-space: pre-wrap; color: var(--muted); font-size: 14px; }
+.events { color: var(--muted); font-size: 13px; }
+.empty-state { color: var(--muted); padding: 12px; text-align: center; border: 1px dashed var(--line); border-radius: 8px; }
+.toast { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); inset-inline-start: 50%; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; display: flex; gap: 12px; align-items: center; max-width: calc(100vw - 32px); }
+.toast.show { opacity: 1; pointer-events: auto; }
+.toast button { background: var(--bg); color: var(--fg); border: none; padding: 3px 10px; font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap" id="app">
+  <header>
+    <div>
+      <h1>המסע לסוכנות AI</h1>
+      <div class="muted small">יום אחד, מעט משימות, סיום לפני התחלה.</div>
+    </div>
+    <div class="date" id="todayLabel"></div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab on" data-tab="board" role="tab" aria-selected="true">דשבורד</button>
+    <button class="tab" data-tab="coach" role="tab" aria-selected="false">מאמן מנטלי</button>
+  </nav>
+
+  <section class="panel coach" data-page="coach" hidden>
+    <div class="panel-head">
+      <div>
+        <h2>מאמן מנטלי</h2>
+        <div class="muted small">מקום לפרוק, להתארגן מחדש, ולצאת עם צעד אחד קטן. המאמן רואה את מצב המשימות שלך.</div>
+      </div>
+      <button class="ghost tiny" id="coachReset">שיחה חדשה</button>
+    </div>
+    <div class="quick" id="coachQuick">
+      <button class="qchip" data-q="אני מרגיש לחוץ ועייף, ימים עוברים ואני לא מסיים כלום.">אני לחוץ ועייף</button>
+      <button class="qchip" data-q="אין לי כוח להתחיל את המשימה הראשונה היום. תעזור לי להתניע.">אין לי כוח להתחיל</button>
+      <button class="qchip" data-q="אני עובד על יותר מדי דברים במקביל ולא מצליח לבחור. תעזור לי להחליט מה נדחה.">יותר מדי במקביל</button>
+      <button class="qchip" data-q="סיימתי יום. בוא נעשה צ׳ק־אין של שתי דקות על איך היה.">צ׳ק־אין של 2 דקות</button>
+      <button class="qchip" data-q="תעשה איתי תרגיל נשימה קצר ואז נחזור לעבודה.">תרגיל נשימה קצר</button>
+    </div>
+    <div class="chat" id="chat"><div class="empty-state">עוד לא דיברתם. בחר פתיח למעלה או כתוב משהו משלך.</div></div>
+    <div class="composer">
+      <textarea id="coachInput" placeholder="מה עובר עליך עכשיו?" rows="2"></textarea>
+      <div class="row">
+        <button class="primary" id="coachSend">שלח</button>
+        <button class="ghost" id="coachStop" hidden>עצור</button>
+        <span class="muted small">Enter שולח, Shift+Enter שורה חדשה</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats" id="stats" data-page="board"></div>
+
+  <section class="panel" id="morning" data-page="board">
+    <div class="panel-head">
+      <h2>הטקס של הבוקר</h2>
+      <span class="muted small" id="morningStatus">מתחבר למסד הנתונים…</span>
+    </div>
+    <div class="cols">
+      <div class="col">
+        <h3>אתמול <span class="muted small" id="yLabel"></span></h3>
+        <div class="muted small">גרור את הסליידר לאחוז שאליו הגעת. כל שינוי נשמר מיד.</div>
+        <div class="list" id="yesterdayList"></div>
+        <textarea id="yesterdayText" placeholder="כמה מילים, רק אם יש מה להגיד."></textarea>
+      </div>
+      <div class="col">
+        <h3>היום <span class="muted small">(עד 3 מומלץ)</span></h3>
+        <div id="wipWarn" class="wip-warn" hidden></div>
+        <div class="list" id="todayPicks"></div>
+        <textarea id="todayText" placeholder="הערה ליום, רק אם צריך."></textarea>
+      </div>
+    </div>
+    <div class="row">
+      <button class="primary" id="saveDay">שמור את היום</button>
+      <button id="askClaude">בקש פידבק מקלוד על הקצב</button>
+      <button class="ghost" id="stopClaude" hidden>עצור</button>
+    </div>
+    <div class="feedback empty" id="feedback">הפידבק של קלוד יופיע כאן אחרי שתסמן מה אתה עושה היום ותבקש אותו.</div>
+  </section>
+
+  <section data-page="board">
+    <div class="panel-head" style="margin-bottom:10px">
+      <h2>מערכות</h2>
+      <div class="add" style="flex:1 1 280px;max-width:420px">
+        <input type="text" id="newSystem" placeholder="מערכת חדשה">
+        <button id="addSystem">הוסף</button>
+      </div>
+    </div>
+    <div id="tree" class="list" style="gap:12px"></div>
+  </section>
+
+  <section class="panel" data-page="board">
+    <div class="panel-head"><h2>הימים האחרונים</h2></div>
+    <div class="history" id="history"></div>
+  </section>
+</div>
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastUndo" hidden>בטל</button></div>
+
+<script>
+(function () {
+  document.documentElement.dir = 'rtl';
+  document.documentElement.lang = 'he';
+
+  // ---------- helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const pad = (n) => String(n).padStart(2, '0');
+  const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const TODAY = isoDate(new Date());
+  const YESTERDAY = isoDate(new Date(Date.now() - 864e5));
+  const heDate = (iso) => { const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' }); };
+  const uid = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  $('todayLabel').textContent = heDate(TODAY);
+  $('yLabel').textContent = heDate(YESTERDAY);
+
+  // toast with optional undo
+  let toastT, undoFn = null;
+  function toast(msg, undo) {
+    const t = $('toast'); $('toastMsg').textContent = msg; undoFn = undo || null; $('toastUndo').hidden = !undo;
+    t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => { t.classList.remove('show'); undoFn = null; }, undo ? 6000 : 2200);
+  }
+  $('toastUndo').addEventListener('click', async () => { const f = undoFn; undoFn = null; $('toast').classList.remove('show'); if (f) await f(); });
+
+  // ---------- state ----------
+  // systems/{id}: {name, order}
+  // tasks/{id}: {systemId, parentId|null, title, progress, status, order, todayDate?, startedAt?, doneAt?}
+  const S = { db: null, sample: null, systems: [], tasks: [], days: [], dirtyDay: false, linkForm: null, taskOpen: {} };
+  const byId = (id) => S.tasks.find(t => t.id === id);
+  const sysById = (id) => S.systems.find(s => s.id === id);
+  const children = (id) => S.tasks.filter(t => t.parentId === id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const topTasks = (sid) => S.tasks.filter(t => t.systemId === sid && !t.parentId).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const isLeaf = (t) => !S.tasks.some(x => x.parentId === t.id);
+  // effective progress: leaves carry their own; parents average their children
+  const prog = (t) => { const c = children(t.id); if (!c.length) return Math.min(100, Math.max(0, t.progress ?? 0)); return Math.round(c.reduce((s, x) => s + prog(x), 0) / c.length); };
+  const isDone = (t) => isLeaf(t) ? (t.status === 'done' || (t.progress ?? 0) >= 100) : children(t.id).every(isDone);
+  const isToday = (t) => t.todayDate === TODAY && !isDone(t);
+  const leaves = () => S.tasks.filter(isLeaf);
+  const openLeaves = () => leaves().filter(t => !isDone(t));
+  const wip = () => openLeaves().filter(t => t.status === 'active');
+  const pathOf = (t) => { const parts = []; const sys = sysById(t.systemId); if (sys) parts.push(sys.name); if (t.parentId) { const p = byId(t.parentId); if (p) parts.push(p.title); } return parts.join(' › '); };
+
+  // ---------- render ----------
+  function render() { renderStats(); renderMorning(); renderTree(); renderHistory(); }
+
+  function renderStats() {
+    const weekAgo = isoDate(new Date(Date.now() - 7 * 864e5));
+    const doneWeek = leaves().filter(t => isDone(t) && t.doneAt && t.doneAt >= weekAgo).length;
+    const w = wip().length;
+    $('stats').innerHTML = `
+      <div class="stat"><span class="muted small">הושלמו ב־7 ימים</span><b>${doneWeek}</b></div>
+      <div class="stat ${w > 3 ? 'hot' : ''}"><span class="muted small">בעבודה במקביל</span><b>${w}</b></div>
+      <div class="stat"><span class="muted small">פתוחות</span><b>${openLeaves().length}</b></div>
+      <div class="stat"><span class="muted small">ימים שתועדו</span><b>${S.days.filter(d => d.savedAt).length}</b></div>`;
+  }
+  const dayDoc = (date) => S.days.find(d => d.id === date);
+
+  function yesterdayItems() {
+    const planned = leaves().filter(t => t.todayDate === YESTERDAY);
+    if (planned.length) return planned;
+    const y = dayDoc(YESTERDAY);
+    const ids = new Set(((y && y.plan) || []).map(p => p.id));
+    const fromPlan = leaves().filter(t => ids.has(t.id));
+    if (fromPlan.length) return fromPlan;
+    return wip();
+  }
+
+  function renderMorning() {
+    const ys = yesterdayItems();
+    $('yesterdayList').innerHTML = ys.length ? ys.map(t => { const p = prog(t); return `
+      <div class="yrow ${isDone(t) ? 'done' : ''}">
+        <div class="t">${esc(t.title)}</div>
+        <div class="pct" data-pctfor="${t.id}">${p}%</div>
+        <div class="path">${esc(pathOf(t))}</div>
+        <input type="range" min="0" max="100" step="5" value="${p}" data-range="${t.id}" aria-label="התקדמות ${esc(t.title)}">
+      </div>`; }).join('') : '<div class="empty-state">לא היו משימות מתוכננות לאתמול.</div>';
+
+    if (!S.dirtyDay) {
+      const t = dayDoc(TODAY);
+      $('yesterdayText').value = (t && t.yesterdayText) || '';
+      $('todayText').value = (t && t.todayText) || '';
+      const fb = $('feedback');
+      if (t && t.feedback) { fb.textContent = t.feedback; fb.classList.remove('empty'); }
+    }
+
+    const picks = openLeaves().slice().sort((a, b) => (isToday(b) - isToday(a)) || (sysOrder(a) - sysOrder(b)));
+    $('todayPicks').innerHTML = picks.length ? picks.map(t => `
+      <label class="pick">
+        <input type="checkbox" data-pick="${t.id}" ${isToday(t) ? 'checked' : ''}>
+        <span>${esc(t.title)}</span>
+        <span class="path">${esc(pathOf(t))}</span>
+      </label>`).join('') : '<div class="empty-state">אין משימות פתוחות.</div>';
+    const n = picks.filter(isToday).length;
+    const ww = $('wipWarn');
+    if (n > 3) { ww.hidden = false; ww.textContent = `${n} משימות להיום. יותר מ־3 במקביל זה בדיוק מה שמשחק את היעילות. בחר מה נדחה.`; }
+    else ww.hidden = true;
+    $('morningStatus').textContent = S.db ? (dayDoc(TODAY)?.savedAt ? 'היום נשמר ✓' : 'עדיין לא נשמר היום') : 'מתחבר למסד הנתונים…';
+  }
+  const sysOrder = (t) => { const s = sysById(t.systemId); return s ? (s.order ?? 99) : 99; };
+
+  function renderTree() {
+    const box = $('tree');
+    if (!S.systems.length) { box.innerHTML = '<div class="empty-state">אין מערכות עדיין. הוסף אחת למעלה.</div>'; return; }
+    const openIds = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.id));
+    const first = !box.children.length;
+    box.innerHTML = S.systems.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map(s => {
+      const ts = topTasks(s.id);
+      const all = S.tasks.filter(t => t.systemId === s.id && isLeaf(t));
+      const avg = ts.length ? Math.round(ts.reduce((a, t) => a + prog(t), 0) / ts.length) : 0;
+      const allDone = all.length > 0 && all.every(isDone);
+      const open = first ? !allDone : openIds.has(s.id);
+      return `<details class="system" data-id="${s.id}" ${open ? 'open' : ''}>
+        <summary>
+          <span class="chev">◀</span>
+          <h3 style="flex:1 1 160px">${esc(s.name)}</h3>
+          <span class="muted small">${all.filter(isDone).length}/${all.length}</span>
+          <div class="bar ${allDone ? 'full' : ''}"><i style="width:${avg}%"></i></div>
+          <span class="pct">${avg}%</span>
+          ${allDone ? '<span class="chip done">הסתיים</span>' : ''}
+          <button class="trash" data-delsys="${s.id}" title="מחק מערכת" aria-label="מחק מערכת">🗑</button>
+        </summary>
+        <div class="body">
+          ${linksRow(s, 'systems')}
+          ${ts.map(t => renderTask(t, first, openIds)).join('')}
+          <div class="add"><input type="text" data-newtask="${s.id}" placeholder="משימה חדשה תחת ${esc(s.name)}, או הדבק רשימה"><button data-addtask="${s.id}">הוסף משימה</button></div>
+        </div>
+      </details>`;
+    }).join('');
+  }
+
+  function renderTask(t, first, openIds) {
+    const subs = children(t.id);
+    const p = prog(t); const done = isDone(t);
+    if (!(t.id in S.taskOpen)) S.taskOpen[t.id] = !done;
+    const open = S.taskOpen[t.id];
+    return `<div class="task ${done ? 'done' : ''} ${open ? 'open' : ''}" data-id="${t.id}">
+      <div class="thead">
+        <button class="chevbtn" data-toggle="${t.id}" aria-label="${open ? 'קפל' : 'פתח'}" aria-expanded="${open}"><span class="chev">◀</span></button>
+        <div class="title" data-edit="${t.id}" data-toggle="${t.id}" title="לחיצה לפתיחה, לחיצה כפולה לעריכה">${esc(t.title)}</div>
+        <div class="ctl">${subs.length ? '' : leafControls(t, done)}<button class="trash" data-del="${t.id}" title="מחק" aria-label="מחק">🗑</button></div>
+        <div class="meta">${chipFor(t, done)}<div class="bar ${done ? 'full' : ''}"><i style="width:${p}%"></i></div><span class="pct">${p}%</span>${subs.length ? `<span class="muted small">${subs.filter(isDone).length}/${subs.length} תת־משימות</span>` : ''}</div>
+        ${linksRow(t, 'tasks')}
+      </div>
+      <div class="tbody" ${open ? '' : 'hidden'}>
+        ${subs.map(renderSub).join('')}
+        <div class="add sub-add"><input type="text" data-newsub="${t.id}" placeholder="תת־משימה חדשה, או הדבק רשימה שלמה"><button class="tiny" data-addsub="${t.id}">הוסף</button></div>
+      </div>
+    </div>`;
+  }
+  function renderSub(t) {
+    const p = prog(t); const done = isDone(t);
+    return `<div class="sub ${done ? 'done' : ''}" data-id="${t.id}">
+      <div class="title" data-edit="${t.id}" title="לחיצה כפולה לעריכה">${esc(t.title)}</div>
+      <div class="ctl">${leafControls(t, done)}<button class="trash" data-del="${t.id}" title="מחק" aria-label="מחק">🗑</button></div>
+      <div class="meta">${chipFor(t, done)}<div class="bar ${done ? 'full' : ''}"><i style="width:${p}%"></i></div><span class="pct">${p}%</span>${t.doneAt ? `<span class="muted small">${t.doneAt}</span>` : ''}</div>
+      ${linksRow(t, 'tasks')}
+    </div>`;
+  }
+  // links row: chips that open in a new tab, a remove × per chip, and an inline add form
+  function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, '').replace(/^docs\.google\.com$/, 'Google Docs').replace(/^drive\.google\.com$/, 'Drive').replace(/^claude\.ai$/, 'Claude'); } catch { return ''; } }
+  function linksRow(item, coll) {
+    const links = Array.isArray(item.links) ? item.links : [];
+    const key = coll + '/' + item.id;
+    const chips = links.map((l, i) => `<a class="lchip" href="${esc(l.url)}" target="_blank" rel="noopener"><span class="x" data-dellink="${key}" data-i="${i}" title="הסר לינק" role="button">×</span><span>${esc(l.label || l.url)}</span><b>${esc(hostOf(l.url))}</b></a>`).join('');
+    const form = S.linkForm === key ? `<div class="linkform"><input type="text" data-lf-label="${key}" placeholder="שם (למשל: חוברת עבודה)"><input type="text" class="url" data-lf-url="${key}" placeholder="https://…"><button class="tiny primary" data-savelink="${key}">שמור</button><button class="tiny ghost" data-cancellink="${key}">ביטול</button></div>` : '';
+    return `<div class="links">${chips}<button class="tiny addlink" data-addlink="${key}">+ לינק</button></div>${form}`;
+  }
+  async function saveLinks(key, links) {
+    if (!S.db) return toast('אין חיבור למסד הנתונים');
+    const [coll, id] = key.split('/');
+    const item = coll === 'systems' ? sysById(id) : byId(id); if (!item) return;
+    const n = structuredClone(item); n.links = links;
+    try { await S.db.doc(coll + '/' + id).set(strip(n)); } catch (e) { toast('השמירה נכשלה: ' + e.code); }
+  }
+  function leafControls(t, done) {
+    return done ? `<button class="tiny" data-reopen="${t.id}">פתח מחדש</button>` : `
+      <button class="tiny" data-prog="${t.id}" data-d="-10" aria-label="פחות 10%">−10</button>
+      <button class="tiny" data-prog="${t.id}" data-d="10" aria-label="עוד 10%">+10</button>
+      <button class="tiny" data-done="${t.id}">✓</button>
+      <button class="tiny" data-status="${t.id}">${t.status === 'active' ? 'השהה' : 'התחל'}</button>`;
+  }
+  function chipFor(t, done) {
+    if (done) return '<span class="chip done">הושלם</span>';
+    if (!isLeaf(t)) return children(t.id).some(isToday) ? '<span class="chip today">היום</span>' : '';
+    return isToday(t) ? '<span class="chip today">היום</span>' : t.status === 'active' ? '<span class="chip active">בעבודה</span>' : '<span class="chip hold">ממתין</span>';
+  }
+
+  function renderHistory() {
+    const days = S.days.filter(d => d.id !== TODAY).slice().sort((a, b) => b.id.localeCompare(a.id)).slice(0, 10);
+    $('history').innerHTML = days.length ? days.map(d => `<div class="day">
+      <div class="row"><span class="d">${heDate(d.id)}</span><span class="muted small">${d.id}</span></div>
+      ${(d.plan || []).length ? `<div><span class="muted small">תוכנן: </span>${d.plan.map(p => esc(p.title)).join(' · ')}</div>` : ''}
+      ${d.todayText ? `<div><span class="muted small">הערה: </span>${esc(d.todayText)}</div>` : ''}
+      ${d.yesterdayText ? `<div><span class="muted small">סיכום: </span>${esc(d.yesterdayText)}</div>` : ''}
+      ${(d.events || []).length ? `<div class="events">${d.events.map(e => `${esc(e.title)} ${e.from}→${e.to}%`).join(' · ')}</div>` : ''}
+      ${d.feedback ? `<div class="fb">${esc(d.feedback)}</div>` : ''}
+    </div>`).join('') : '<div class="empty-state">ההיסטוריה תתמלא מהיום הראשון שתשמור.</div>';
+  }
+
+  // ---------- writes ----------
+  const strip = (t) => { const { id, ...rest } = t; return rest; };
+  async function saveTask(t) {
+    if (!S.db) return toast('אין חיבור למסד הנתונים');
+    try { await S.db.doc('tasks/' + t.id).set(strip(t)); } catch (e) { toast('השמירה נכשלה: ' + e.code); }
+  }
+  async function logEvent(t, from, to) {
+    if (!S.db || from === to) return;
+    try {
+      const ref = S.db.doc('days/' + TODAY);
+      const snap = await ref.get();
+      const d = snap.exists ? structuredClone(snap.data()) : {};
+      d.events = (d.events || []).concat([{ taskId: t.id, title: t.title, from, to, at: new Date().toISOString() }]).slice(-60);
+      await ref.set(d);
+    } catch (e) { console.warn(e); }
+  }
+  async function setProgress(t, to) {
+    const from = t.progress ?? 0;
+    to = Math.min(100, Math.max(0, Math.round(to)));
+    const n = structuredClone(t);
+    n.progress = to;
+    if (to >= 100) { n.status = 'done'; n.doneAt = TODAY; }
+    else { if (n.status === 'done') n.status = 'active'; delete n.doneAt; if (to > 0 && n.status !== 'active') n.status = 'active'; }
+    if (!n.startedAt && to > 0) n.startedAt = TODAY;
+    await saveTask(n); await logEvent(n, from, to);
+  }
+  async function saveDay() {
+    if (!S.db) return toast('אין חיבור למסד הנתונים');
+    const ref = S.db.doc('days/' + TODAY);
+    const snap = await ref.get();
+    const d = snap.exists ? structuredClone(snap.data()) : {};
+    d.yesterdayText = $('yesterdayText').value.trim();
+    d.todayText = $('todayText').value.trim();
+    d.plan = S.tasks.filter(isToday).map(t => ({ id: t.id, title: t.title }));
+    d.savedAt = new Date().toISOString();
+    await ref.set(d);
+    S.dirtyDay = false;
+    toast('היום נשמר');
+  }
+  // delete with undo: collect the subtree, delete, offer restore
+  async function deleteTaskTree(id) {
+    const collect = (x) => [x, ...children(x.id).flatMap(collect)];
+    const root = byId(id); if (!root) return;
+    const docs = collect(root);
+    for (const t of docs) await S.db.doc('tasks/' + t.id).delete();
+    toast(`נמחק: ${root.title}${docs.length > 1 ? ` (+${docs.length - 1})` : ''}`, async () => { for (const t of docs) await S.db.doc('tasks/' + t.id).set(strip(t)); toast('שוחזר'); });
+  }
+  async function deleteSystem(id) {
+    const s = sysById(id); if (!s) return;
+    const docs = S.tasks.filter(t => t.systemId === id);
+    await S.db.doc('systems/' + id).delete();
+    for (const t of docs) await S.db.doc('tasks/' + t.id).delete();
+    toast(`נמחקה המערכת ${s.name}${docs.length ? ` (+${docs.length} משימות)` : ''}`, async () => {
+      await S.db.doc('systems/' + id).set(strip(s));
+      for (const t of docs) await S.db.doc('tasks/' + t.id).set(strip(t));
+      toast('שוחזר');
+    });
+  }
+
+  // ---------- Claude feedback ----------
+  let ctl = null;
+  function buildPrompt() {
+    const L = [];
+    L.push('אתה מאמן פרודוקטיביות ישר וחם לאדם שבונה סוכנות AI לבד, מרגיש לחץ ועייפות, ונוטה לעבוד על הרבה משימות במקביל בלי לסיים.');
+    L.push('ענה בעברית בלבד, עד 160 מילים, בטון של עמית ולא של מורה. בלי כותרות, בלי אימוג׳ים, בלי רשימת "טיפים" גנרית.');
+    L.push('המבנה: (1) משפט אחד על קצב ההתקדמות האמיתי מהנתונים, (2) אם יש יותר מ־3 משימות במקביל, אמור זאת ישירות ושאל מה נדחה, (3) המלצה אחת קונקרטית ליום הזה בלבד, (4) משפט סיום קצר ומעודד שמתבסס על עובדה מהנתונים.');
+    L.push('');
+    L.push(`תאריך היום: ${TODAY} (${heDate(TODAY)})`);
+    L.push('');
+    L.push('מצב המערכות (מערכת > משימה > תת־משימה):');
+    S.systems.forEach(s => {
+      L.push(`- ${s.name}`);
+      topTasks(s.id).forEach(t => {
+        const st = (x) => isDone(x) ? 'הושלם' + (x.doneAt ? ' ' + x.doneAt : '') : x.status === 'active' ? 'בעבודה' : 'ממתין';
+        L.push(`  - ${t.title}: ${prog(t)}% | ${st(t)}${isToday(t) ? ' | מתוכנן להיום' : ''}`);
+        children(t.id).forEach(c => L.push(`    - ${c.title}: ${prog(c)}% | ${st(c)}${isToday(c) ? ' | מתוכנן להיום' : ''}${c.startedAt ? ' | התחיל ' + c.startedAt : ''}`));
+      });
+    });
+    L.push('');
+    L.push(`מספר משימות בעבודה במקביל: ${wip().length}. מתוכננות להיום: ${S.tasks.filter(isToday).length}.`);
+    const recent = S.days.filter(d => d.id !== TODAY).sort((a, b) => b.id.localeCompare(a.id)).slice(0, 7);
+    L.push(''); L.push('שבעת הימים האחרונים:');
+    if (!recent.length) L.push('- אין תיעוד קודם. זה היום הראשון.');
+    recent.forEach(d => {
+      const ev = (d.events || []).map(e => `${e.title} ${e.from}→${e.to}%`).join(', ');
+      L.push(`- ${d.id}: תוכנן: ${(d.plan || []).map(p => p.title).join(', ') || 'לא תועד'} | תנועות: ${ev || 'אין'}${d.feedback ? ' | פידבק קודם: ' + d.feedback.slice(0, 200) : ''}`);
+    });
+    const te = (dayDoc(TODAY)?.events || []).map(e => `${e.title} ${e.from}→${e.to}%`).join(', ');
+    if (te) L.push(`- היום עד עכשיו: ${te}`);
+    L.push('');
+    L.push('מה הוא כתב על אתמול: ' + ($('yesterdayText').value.trim() || '(לא כתב)'));
+    L.push('מה הוא כתב על היום: ' + ($('todayText').value.trim() || '(לא כתב)'));
+    return L.join('\n');
+  }
+  async function askClaude() {
+    if (!S.sample) return toast('הפידבק מקלוד לא זמין בתצוגה הזו');
+    const fb = $('feedback'); const btn = $('askClaude'); const stop = $('stopClaude');
+    ctl = new AbortController();
+    btn.disabled = true; stop.hidden = false;
+    fb.classList.remove('empty'); fb.textContent = 'קלוד קורא את הנתונים…';
+    try {
+      const { text } = await S.sample(buildPrompt(), { signal: ctl.signal, cache: false, onText: ({ text }) => { fb.textContent = text; } });
+      fb.textContent = text;
+      if (S.db) {
+        const ref = S.db.doc('days/' + TODAY);
+        const snap = await ref.get();
+        const d = snap.exists ? structuredClone(snap.data()) : {};
+        d.feedback = text; d.feedbackAt = new Date().toISOString();
+        if (!d.savedAt) { d.yesterdayText = $('yesterdayText').value.trim(); d.todayText = $('todayText').value.trim(); d.plan = S.tasks.filter(isToday).map(t => ({ id: t.id, title: t.title })); d.savedAt = d.feedbackAt; }
+        await ref.set(d);
+      }
+    } catch (e) {
+      if (e.code === 'cancelled') fb.textContent = e.text || 'הופסק.';
+      else if (e.code === 'not_granted' || e.code === 'sampling_disabled') { fb.textContent = 'לא אושר שימוש בקלוד מתוך הדף הזה.'; btn.hidden = true; }
+      else if (e.code === 'rate_limited') fb.textContent = (e.text || '') + '\n\nיותר מדי בקשות כרגע. נסה שוב בעוד כמה דקות.';
+      else fb.textContent = (e.text || '') + '\n\nמשהו נכשל (' + e.code + '). נסה שוב.';
+    } finally { btn.disabled = false; stop.hidden = true; ctl = null; }
+  }
+
+  // ---------- events ----------
+  document.addEventListener('click', async (ev) => {
+    const x = ev.target.closest('[data-dellink]');
+    if (x) {
+      ev.preventDefault(); ev.stopPropagation();
+      const [coll, id] = x.dataset.dellink.split('/'); const item = coll === 'systems' ? sysById(id) : byId(id); if (!item) return;
+      const links = (item.links || []).slice(); const [removed] = links.splice(Number(x.dataset.i), 1);
+      await saveLinks(x.dataset.dellink, links);
+      toast(`הלינק "${removed?.label || ''}" הוסר`, async () => { const cur = (coll === 'systems' ? sysById(id) : byId(id)); await saveLinks(x.dataset.dellink, (cur?.links || []).concat([removed])); });
+      return;
+    }
+    const tg = ev.target.closest('[data-toggle]');
+    if (tg && !ev.target.closest('input')) { const id = tg.dataset.toggle; S.taskOpen[id] = !S.taskOpen[id]; render(); return; }
+    const b = ev.target.closest('button'); if (!b) return;
+    if (b.dataset.addlink) { S.linkForm = S.linkForm === b.dataset.addlink ? null : b.dataset.addlink; render(); const f = document.querySelector(`[data-lf-label="${S.linkForm}"]`); if (f) f.focus(); return; }
+    if (b.dataset.cancellink) { S.linkForm = null; render(); return; }
+    if (b.dataset.savelink) {
+      const key = b.dataset.savelink;
+      let url = document.querySelector(`[data-lf-url="${key}"]`).value.trim(); const label = document.querySelector(`[data-lf-label="${key}"]`).value.trim();
+      if (!url) return toast('חסרה כתובת');
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      try { new URL(url); } catch { return toast('הכתובת לא תקינה'); }
+      const [coll, id] = key.split('/'); const item = coll === 'systems' ? sysById(id) : byId(id);
+      S.linkForm = null;
+      await saveLinks(key, (item?.links || []).concat([{ label: label || hostOf(url) || url, url }]));
+      return;
+    }
+    if (b.closest('summary')) ev.preventDefault(); // buttons inside summaries must not toggle
+    const d = b.dataset;
+    if (b.id === 'saveDay') return saveDay();
+    if (b.id === 'askClaude') return askClaude();
+    if (b.id === 'stopClaude') return ctl && ctl.abort();
+    if (!S.db && (b.id === 'addSystem' || d.addtask || d.addsub || d.prog || d.done || d.reopen || d.status || d.del || d.delsys)) return toast('אין חיבור למסד הנתונים');
+    if (b.id === 'addSystem') {
+      const name = $('newSystem').value.trim(); if (!name) return;
+      await S.db.doc('systems/' + uid('s')).set({ name, order: S.systems.length + 1, createdAt: TODAY });
+      $('newSystem').value = ''; return;
+    }
+    if (d.addtask) {
+      const inp = document.querySelector(`[data-newtask="${d.addtask}"]`); const title = inp.value.trim(); if (!title) return;
+      await saveTask({ id: uid('t'), systemId: d.addtask, parentId: null, title, progress: 0, status: 'backlog', order: topTasks(d.addtask).length + 1, createdAt: TODAY });
+      inp.value = ''; return;
+    }
+    if (d.addsub) {
+      const parent = byId(d.addsub); const inp = document.querySelector(`[data-newsub="${d.addsub}"]`); const title = inp.value.trim(); if (!title || !parent) return;
+      await saveTask({ id: uid('t'), systemId: parent.systemId, parentId: parent.id, title, progress: 0, status: 'backlog', order: children(parent.id).length + 1, createdAt: TODAY });
+      inp.value = ''; return;
+    }
+    if (d.prog) { const t = byId(d.prog); return setProgress(t, (t.progress ?? 0) + Number(d.d)); }
+    if (d.done) return setProgress(byId(d.done), 100);
+    if (d.reopen) return setProgress(byId(d.reopen), 90);
+    if (d.status) { const t = structuredClone(byId(d.status)); t.status = t.status === 'active' ? 'backlog' : 'active'; if (t.status === 'active' && !t.startedAt) t.startedAt = TODAY; return saveTask(t); }
+    if (d.del) return deleteTaskTree(d.del);
+    if (d.delsys) return deleteSystem(d.delsys);
+  });
+  // sliders: live label on input, save on release
+  document.addEventListener('input', (ev) => {
+    const r = ev.target.closest('input[data-range]'); if (!r) return;
+    const lbl = document.querySelector(`[data-pctfor="${r.dataset.range}"]`); if (lbl) lbl.textContent = r.value + '%';
+  });
+  document.addEventListener('change', async (ev) => {
+    const r = ev.target.closest('input[data-range]');
+    if (r) { const t = byId(r.dataset.range); if (t) await setProgress(t, Number(r.value)); return; }
+    const c = ev.target.closest('input[data-pick]'); if (!c) return;
+    const t = structuredClone(byId(c.dataset.pick));
+    if (c.checked) { t.todayDate = TODAY; if (t.status !== 'active') { t.status = 'active'; if (!t.startedAt) t.startedAt = TODAY; } }
+    else delete t.todayDate;
+    await saveTask(t);
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    const t = ev.target;
+    if (t.id === 'newSystem') $('addSystem').click();
+    else if (t.dataset.newtask) document.querySelector(`[data-addtask="${t.dataset.newtask}"]`).click();
+    else if (t.dataset.newsub) document.querySelector(`[data-addsub="${t.dataset.newsub}"]`).click();
+    else if (t.dataset.lfLabel || t.dataset.lfUrl) { ev.preventDefault(); document.querySelector(`[data-savelink="${t.dataset.lfLabel || t.dataset.lfUrl}"]`).click(); }
+  });
+  ['yesterdayText', 'todayText'].forEach(id => $(id).addEventListener('input', () => { S.dirtyDay = true; }));
+  document.addEventListener('dblclick', (ev) => {
+    const el = ev.target.closest('[data-edit]'); if (!el) return;
+    ev.preventDefault();
+    const t = byId(el.dataset.edit); const v = document.createElement('input'); v.type = 'text'; v.value = t.title;
+    v.addEventListener('click', e => e.preventDefault());
+    el.replaceWith(v); v.focus();
+    const commit = async () => { const title = v.value.trim(); if (title && title !== t.title) { const n = structuredClone(t); n.title = title; await saveTask(n); } else render(); };
+    v.addEventListener('blur', commit); v.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); v.blur(); } if (e.key === 'Escape') { v.value = t.title; v.blur(); } });
+  });
+  // paste a multi-line list into "new task" / "new sub-task": one item per line
+  function parseList(text) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const mark = /^(?:\d+\s*[.)\-:]\s*|[-*•·]\s*|[א-ת]\s*[.)]\s+)/;
+    const marked = lines.filter(l => mark.test(l));
+    const src = marked.length >= 2 ? marked : lines;
+    return src.map(l => l.replace(mark, '').trim()).filter(l => l.length > 1);
+  }
+  document.addEventListener('paste', async (ev) => {
+    const inp = ev.target.closest('input[data-newsub], input[data-newtask]'); if (!inp) return;
+    const text = (ev.clipboardData || window.clipboardData)?.getData('text') || '';
+    if (!/\n/.test(text.trim())) return; // single line: normal paste
+    const items = parseList(text); if (items.length < 2) return;
+    ev.preventDefault();
+    if (!S.db) return toast('אין חיבור למסד הנתונים');
+    const created = [];
+    if (inp.dataset.newsub) {
+      const parent = byId(inp.dataset.newsub); if (!parent) return;
+      let order = children(parent.id).length;
+      for (const title of items) { const t = { id: uid('t'), systemId: parent.systemId, parentId: parent.id, title, progress: 0, status: 'backlog', order: ++order, createdAt: TODAY }; await saveTask(t); created.push(t); }
+    } else {
+      const sid = inp.dataset.newtask; let order = topTasks(sid).length;
+      for (const title of items) { const t = { id: uid('t'), systemId: sid, parentId: null, title, progress: 0, status: 'backlog', order: ++order, createdAt: TODAY }; await saveTask(t); created.push(t); }
+    }
+    inp.value = '';
+    toast(`נוצרו ${created.length} ${inp.dataset.newsub ? 'תת־משימות' : 'משימות'} מהרשימה`, async () => { for (const t of created) await S.db.doc('tasks/' + t.id).delete(); toast('בוטל'); });
+  });
+  // clicks on text inputs inside summaries must not toggle the details
+  document.addEventListener('click', (ev) => { if (ev.target.matches('summary input')) ev.preventDefault(); });
+
+  // ---------- tabs ----------
+  function showTab(name) {
+    document.querySelectorAll('[data-page]').forEach(el => { el.hidden = el.dataset.page !== name; });
+    document.querySelectorAll('.tab').forEach(b => { const on = b.dataset.tab === name; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    try { localStorage.setItem('tab', name); } catch {}
+  }
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  (() => { let t = location.hash === '#coach' ? 'coach' : null; if (!t) { try { t = localStorage.getItem('tab'); } catch {} } showTab(t === 'coach' ? 'coach' : 'board'); })();
+
+  // ---------- mental coach ----------
+  // conversation lives in one document, coach/log {turns:[{role, content, at}]}, trimmed to the last 40 turns
+  S.coach = []; let coachCtl = null; let coachBusy = false;
+  const COACH_RULES = `אתה מאמן מנטלי לאדם שבונה לבד סוכנות AI. הוא מרגיש לחץ ועייפות, ימים עוברים בלי שהוא מסיים משימות, והוא נוטה לעבוד על הרבה דברים במקביל.
+דבר בעברית, בגובה העיניים, חם וישיר, כמו חבר טוב שהוא גם מאמן מנוסה. תשובות קצרות: עד 120 מילים. בלי כותרות, בלי רשימות ארוכות, בלי אימוג׳ים, בלי קלישאות.
+עקרונות: הקשב קודם, שקף במשפט אחד מה שמעת, שאל שאלה אחת בלבד בכל תשובה. העדף צעד אחד קטן וקונקרטי על פני תוכנית גדולה. הצע כלים פשוטים כשמתאים: התחלה של 10 דקות, הקטנת המשימה, נשימה 4-4-6, סגירת טאבים, בחירת משימה אחת והשהיית השאר.
+השתמש בנתוני המשימות רק כשזה עוזר, ואל תקריא אותם. אל תאבחן ואל תיתן ייעוץ רפואי. אם עולים סימנים למצוקה קשה או חוסר תקווה עמוק, אמור בעדינות שכדאי לדבר עם איש מקצוע או עם אדם קרוב, ותישאר נוכח.`;
+  function coachContext() {
+    const L = [`היום: ${TODAY}. בעבודה במקביל: ${wip().length}. מתוכננות להיום: ${S.tasks.filter(isToday).length}. פתוחות: ${openLeaves().length}.`];
+    S.systems.forEach(s => { const ls = S.tasks.filter(t => t.systemId === s.id && isLeaf(t)); L.push(`${s.name}: ${ls.filter(isDone).length}/${ls.length} הושלמו` + (ls.filter(isToday).length ? '. להיום: ' + ls.filter(isToday).map(t => t.title).join(', ') : '')); });
+    const y = dayDoc(YESTERDAY); if (y && (y.events || []).length) L.push('אתמול: ' + y.events.map(e => `${e.title} ${e.from}→${e.to}%`).join(', '));
+    const t = dayDoc(TODAY); if (t && t.feedback) L.push('הפידבק של הבוקר: ' + t.feedback.slice(0, 300));
+    return L.join('\n');
+  }
+  function renderChat(streaming) {
+    const box = $('chat');
+    if (!S.coach.length && !streaming) { box.innerHTML = '<div class="empty-state">עוד לא דיברתם. בחר פתיח למעלה או כתוב משהו משלך.</div>'; return; }
+    box.innerHTML = S.coach.map(m => `<div class="msg ${m.role === 'user' ? 'user' : 'coach'}">${esc(m.content)}</div>`).join('') + (streaming ? `<div class="msg coach ${streaming === true ? 'thinking' : ''}" id="streamMsg">${streaming === true ? 'המאמן חושב…' : esc(streaming)}</div>` : '');
+    box.scrollTop = box.scrollHeight;
+  }
+  async function saveCoach() {
+    if (!S.db) return;
+    try { await S.db.doc('coach/log').set({ turns: S.coach.slice(-40), updatedAt: new Date().toISOString() }); } catch (e) { console.warn(e); }
+  }
+  async function coachSend(text) {
+    text = (text || '').trim(); if (!text || coachBusy) return;
+    if (!S.sample) return toast('המאמן לא זמין בתצוגה הזו');
+    coachBusy = true; $('coachSend').disabled = true; $('coachStop').hidden = false; $('coachInput').value = '';
+    S.coach.push({ role: 'user', content: text, at: new Date().toISOString() });
+    renderChat(true);
+    coachCtl = new AbortController();
+    const turns = [{ role: 'user', content: COACH_RULES + '\n\nמצב נוכחי מהדשבורד:\n' + coachContext() }, ...S.coach.slice(-20).map(m => ({ role: m.role, content: m.content }))];
+    try {
+      const { text: reply } = await S.sample(turns, { cache: false, signal: coachCtl.signal, onText: ({ text }) => { const el = $('streamMsg'); if (el) { el.classList.remove('thinking'); el.textContent = text; $('chat').scrollTop = $('chat').scrollHeight; } } });
+      S.coach.push({ role: 'assistant', content: reply, at: new Date().toISOString() });
+      renderChat(false); await saveCoach();
+    } catch (e) {
+      if (e.code === 'cancelled') { if (e.text) { S.coach.push({ role: 'assistant', content: e.text, at: new Date().toISOString() }); await saveCoach(); } renderChat(false); }
+      else if (e.code === 'not_granted' || e.code === 'sampling_disabled') { renderChat(false); toast('לא אושר שימוש בקלוד מתוך הדף הזה'); }
+      else { renderChat(false); toast(e.code === 'rate_limited' ? 'יותר מדי בקשות, נסה בעוד כמה דקות' : 'משהו נכשל (' + e.code + '), נסה שוב'); }
+    } finally { coachBusy = false; $('coachSend').disabled = false; $('coachStop').hidden = true; coachCtl = null; }
+  }
+  $('coachSend').addEventListener('click', () => coachSend($('coachInput').value));
+  $('coachStop').addEventListener('click', () => coachCtl && coachCtl.abort());
+  $('coachInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); coachSend($('coachInput').value); } });
+  $('coachQuick').addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (b) coachSend(b.dataset.q); });
+  $('coachReset').addEventListener('click', async () => {
+    if (!S.coach.length) return;
+    const old = S.coach.slice(); S.coach = []; renderChat(false); await saveCoach();
+    toast('השיחה נוקתה', async () => { S.coach = old; renderChat(false); await saveCoach(); });
+  });
+
+  // ---------- boot ----------
+  render();
+  (async () => {
+    const [db, sample] = await Promise.all([claude.use('db'), claude.use('sample')]);
+    S.db = db; S.sample = sample;
+    if (!sample) { $('askClaude').hidden = true; $('coachSend').disabled = true; $('coachInput').placeholder = 'המאמן לא זמין בתצוגה הזו'; }
+    if (!db) { $('morningStatus').textContent = 'אין גישה למסד הנתונים בתצוגה הזו'; return; }
+    const onErr = (e) => { console.warn(e); $('morningStatus').textContent = 'שגיאת חיבור: ' + e.code; };
+    db.collection('systems').onSnapshot(s => { S.systems = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, onErr);
+    db.collection('tasks').onSnapshot(s => { S.tasks = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, onErr);
+    db.collection('days').onSnapshot(s => { S.days = s.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, onErr);
+    db.doc('coach/log').onSnapshot(s => { if (coachBusy) return; S.coach = (s.exists && Array.isArray(s.data().turns)) ? s.data().turns.slice() : []; renderChat(false); }, onErr);
+  })();
+})();
+</script>
+
+
+</body></html>

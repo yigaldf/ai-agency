@@ -1,0 +1,18 @@
+{
+  "name": "ai-agency-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "המסע לסוכנות AI - daily task dashboard with a Claude coach",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "express": "^4.21.2"
+  }
+}
