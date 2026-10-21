@@ -1,48 +1,71 @@
 # המסע לסוכנות AI – דשבורד
 
-דשבורד יומי בעברית: טקס בוקר, עץ מערכות/משימות/תת-משימות, היסטוריה, פידבק מקלוד ומאמן מנטלי.
+דשבורד יומי בעברית: טקס בוקר, עץ מערכות / משימות / תת-משימות, היסטוריה, פידבק מקלוד ומאמן מנטלי.
 
-הדשבורד נבנה במקור כ-Artifact ב-claude.ai. כאן הוא רץ כאפליקציית Node עצמאית:
+## סטאק
 
-- `public/index.html` – הדשבורד עצמו (ללא שינוי בלוגיקה).
-- `public/claude-shim.js` – מחליף את `claude.use('db')` ו-`claude.use('sample')` בקריאות לשרת.
-- `server.js` – שרת Express: מסד נתונים בקובץ JSON, עדכונים חיים (SSE), ופרוקסי ל-API של Anthropic.
+| שכבה | טכנולוגיה |
+|---|---|
+| Frontend | React 18 + Vite + TypeScript (`frontend/`) |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2, Anthropic SDK (`backend/`) |
+| DB | PostgreSQL (SQLite לפיתוח מקומי ולבדיקות) |
+| אירוח | Railway, אימג׳ Docker אחד שמגיש גם את ה-API וגם את ה-React הבנוי |
 
 ## הרצה מקומית
 
 ```bash
+# backend
+cd backend
+uv venv .venv && uv pip install -r requirements-dev.txt     # או: python -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+export ANTHROPIC_API_KEY=sk-ant-...                           # אופציונלי; בלי זה כפתורי קלוד מוסתרים
+# בלי DATABASE_URL נוצר קובץ SQLite ב-backend/data/dev.db
+.venv/bin/uvicorn app.main:app --reload --port 8000
+
+# frontend (טרמינל שני)
+cd frontend
 npm install
-cp .env.example .env   # ולמלא ANTHROPIC_API_KEY
-export $(grep -v '^#' .env | xargs)
-npm start
+npm run dev          # http://localhost:5173, קריאות /api מועברות ל-8000
 ```
 
-פותחים את http://localhost:3000.
+בדיקות: `cd backend && .venv/bin/python -m pytest -q`.
 
 ## פריסה ב-Railway
 
-1. ב-Railway: **New Project → Deploy from GitHub repo** ובוחרים את הריפו הזה. Railway מזהה לבד את `package.json` ואת `railway.json`.
-2. ב-**Variables** של השירות מוסיפים:
+1. **New Project → Deploy from GitHub repo** ובוחרים את הריפו הזה. Railway מזהה את ה-`Dockerfile` דרך `railway.json`.
+2. באותו פרויקט: **+ New → Database → PostgreSQL**.
+3. בשירות של האפליקציה, **Variables**:
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (Reference למסד שיצרת).
    - `ANTHROPIC_API_KEY` – חובה כדי שהפידבק והמאמן יעבדו.
    - `DASHBOARD_PASSWORD` – מומלץ מאוד. בלי זה הדשבורד פתוח לכל מי שיש לו את הקישור.
-   - `DATA_DIR=/data`
-3. ב-**Settings → Volumes** מוסיפים Volume עם mount path `/data`. בלי Volume המשימות יימחקו בכל deploy.
-4. ב-**Settings → Networking** לוחצים **Generate Domain** כדי לקבל כתובת ציבורית.
+4. **Settings → Networking → Generate Domain**.
+
+אין צורך ב-Volume: כל הנתונים ב-Postgres.
+
+## API
+
+תיעוד אינטראקטיבי ב-`/api/docs`. עיקרי הנקודות:
+
+| Method | Path | תיאור |
+|---|---|---|
+| GET | `/api/state` | כל המצב: מערכות, משימות, ימים, שיחת המאמן, סטטוס AI |
+| PUT / DELETE | `/api/systems/{id}` | יצירה/עדכון/מחיקה של מערכת (מחיקה מחזירה את המשימות לשחזור) |
+| PUT / DELETE | `/api/tasks/{id}` | יצירה/עדכון/מחיקה של משימה כולל תת-משימות |
+| POST | `/api/tasks/bulk` | יצירה או שחזור של כמה משימות |
+| PUT | `/api/tasks/{id}/progress` | עדכון אחוז התקדמות ורישום אירוע ביום |
+| PATCH | `/api/days/{YYYY-MM-DD}` | שמירת טקסטים, תוכנית היום וסימון "נשמר" |
+| POST | `/api/feedback` | פידבק בוקר מקלוד (streaming) |
+| POST / DELETE | `/api/coach/messages` | הודעה למאמן (streaming) / ניקוי השיחה |
 
 ## משתני סביבה
 
 | משתנה | ברירת מחדל | תיאור |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | – | מפתח API של Anthropic. בלי זה כפתורי קלוד מוסתרים. |
-| `DASHBOARD_PASSWORD` | ריק (ללא הגנה) | סיסמה ל-Basic Auth. שם המשתמש לא משנה. |
+| `DATABASE_URL` | `sqlite:///./data/dev.db` | חיבור ל-Postgres. `postgres://` מתורגם אוטומטית ל-psycopg. |
+| `ANTHROPIC_API_KEY` | – | מפתח API של Anthropic. |
+| `DASHBOARD_PASSWORD` | ריק (ללא הגנה) | סיסמה ל-Basic Auth. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | המודל לפידבק ולמאמן. |
-| `DATA_DIR` | `./data` | תיקיית קובץ הנתונים `db.json`. |
-| `PORT` | `3000` | Railway מגדיר לבד. |
+| `PORT` | `8000` | Railway מגדיר לבד. |
 
-## ייבוא נתונים מהדשבורד הישן
+## ייבוא נתונים מהדשבורד הישן ב-claude.ai
 
-הנתונים ב-claude.ai נשמרים במסד הנתונים של ה-Artifact ולא עוברים אוטומטית. אפשר לייצא אותם משם ולהעלות ל-`/data/db.json` במבנה:
-
-```json
-{ "systems": { "<id>": {...} }, "tasks": { "<id>": {...} }, "days": { "<YYYY-MM-DD>": {...} }, "coach": { "log": {...} } }
-```
+הנתונים לא עוברים אוטומטית. אפשר לייצא אותם משם ולטעון דרך ה-API (`PUT /api/systems/{id}`, `POST /api/tasks/bulk`).
