@@ -107,3 +107,28 @@ class State(Camel):
     days: list[DayOut]
     coach: list[CoachMessageOut]
     ai: AiStatus
+
+
+class SubscriptionIn(Camel):
+    name: str = Field(min_length=1, max_length=200)
+    vendor: str = ""
+    amount: float = Field(default=0, ge=0)
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    cycle: str = Field(default="monthly", pattern="^(monthly|yearly|weekly)$")
+    status: str = Field(default="active", pattern="^(active|cancelled|trial)$")
+    category: str = ""
+    next_charge: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    last_charge: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    payment_method: str = ""
+    cancel_url: str = ""
+    source_url: str = ""
+    notes: str = ""
+    created_at: str | None = None
+
+
+class SubscriptionOut(SubscriptionIn):
+    id: str
+
+
+class SubscriptionWithId(SubscriptionIn):
+    id: str

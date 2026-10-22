@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from . import ai, schemas
 from .db import Base, SessionLocal, engine, get_db
 from .logic import TaskTree, apply_progress
-from .models import CoachMessage, Day, System, Task
+from .models import CoachMessage, Day, Subscription, System, Task
 from .prompts import COACH_RULES, coach_context, feedback_prompt
 
 
@@ -278,6 +278,50 @@ def coach_restore(body: list[schemas.CoachMessageOut], db: Session = Depends(get
     db.add_all(rows)
     db.commit()
     return rows
+
+
+# ---------- subscriptions ----------
+@app.get("/api/subscriptions", response_model=list[schemas.SubscriptionOut], response_model_by_alias=True)
+def list_subscriptions(db: Session = Depends(get_db)):
+    return db.scalars(select(Subscription).order_by(Subscription.status, Subscription.name)).all()
+
+
+def _set_sub(s: Subscription, body: schemas.SubscriptionIn) -> None:
+    for k, v in body.model_dump(by_alias=False).items():
+        setattr(s, k, v.upper() if k == "currency" else v)
+
+
+@app.put("/api/subscriptions/{sub_id}", response_model=schemas.SubscriptionOut, response_model_by_alias=True)
+def upsert_subscription(sub_id: str, body: schemas.SubscriptionIn, db: Session = Depends(get_db)):
+    s = db.get(Subscription, sub_id) or Subscription(id=sub_id)
+    _set_sub(s, body)
+    db.add(s)
+    db.commit()
+    return s
+
+
+@app.post("/api/subscriptions/bulk", response_model=list[schemas.SubscriptionOut], response_model_by_alias=True)
+def upsert_subscriptions(body: list[schemas.SubscriptionWithId], db: Session = Depends(get_db)):
+    """Import or restore many subscriptions at once."""
+    out = []
+    for item in body:
+        s = db.get(Subscription, item.id) or Subscription(id=item.id)
+        _set_sub(s, schemas.SubscriptionIn(**item.model_dump(exclude={"id"})))
+        db.add(s)
+        out.append(s)
+    db.commit()
+    return out
+
+
+@app.delete("/api/subscriptions/{sub_id}", response_model=schemas.SubscriptionOut, response_model_by_alias=True)
+def delete_subscription(sub_id: str, db: Session = Depends(get_db)):
+    s = db.get(Subscription, sub_id)
+    if not s:
+        raise HTTPException(404)
+    out = schemas.SubscriptionOut.model_validate(s)
+    db.delete(s)
+    db.commit()
+    return out
 
 
 # ---------- the React app (built into backend/static by the Dockerfile) ----------

@@ -157,3 +157,26 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 .title input { width: 100%; font: inherit; }
 .msg.error { background: var(--warn-soft); color: var(--warn); }
 .loading { color: var(--muted); text-align: center; padding: 40px; }
+
+/* subscriptions */
+.subs { display: grid; gap: 4px; }
+.subs-head, .subs-row { display: grid; grid-template-columns: 2.2fr 1fr 0.8fr 1fr 0.8fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 8px; }
+.subs-head { color: var(--muted); font-size: 12px; padding-block: 2px; }
+.subs-row { background: var(--panel-2); cursor: pointer; }
+.subs-row:hover { outline: 1px solid var(--line); }
+.subs-row.done { opacity: .6; }
+.subs-row .ctl { justify-content: flex-end; }
+.num { font-family: var(--display); font-variant-numeric: tabular-nums; }
+.num.warn { color: var(--today); font-weight: 500; }
+.subform { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; background: var(--panel-2); border-radius: 8px; padding: 14px; }
+.subform label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.subform input, .subform select, .subform textarea { background: var(--panel); font-size: 14px; color: var(--fg); }
+.subform select { font: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.subform .ltr { direction: ltr; text-align: left; }
+.subform .wide { grid-column: 1 / -1; }
+@media (max-width: 720px) {
+  .subform { grid-template-columns: 1fr 1fr; }
+  .subs-head { display: none; }
+  .subs-row { grid-template-columns: 1fr 1fr; }
+  .subs-row .ctl { grid-column: 1 / -1; justify-content: flex-start; }
+}

@@ -3,6 +3,7 @@ import { Coach } from './components/Coach';
 import { History } from './components/History';
 import { Morning } from './components/Morning';
 import { Stats } from './components/Stats';
+import { Subscriptions } from './components/Subscriptions';
 import { ToastProvider } from './components/Toast';
 import { Tree } from './components/Tree';
 import { api } from './lib/api';
@@ -10,11 +11,13 @@ import { TODAY, heDate } from './lib/dates';
 import { Model } from './lib/model';
 import type { State } from './lib/types';
 
-type Tab = 'board' | 'coach';
+type Tab = 'board' | 'coach' | 'subs';
 
 function initialTab(): Tab {
-  if (location.hash === '#coach') return 'coach';
-  try { return localStorage.getItem('tab') === 'coach' ? 'coach' : 'board'; } catch { return 'board'; }
+  const valid = (t: string | null): t is Tab => t === 'board' || t === 'coach' || t === 'subs';
+  const h = location.hash.slice(1);
+  if (valid(h)) return h;
+  try { const t = localStorage.getItem('tab'); return valid(t) ? t : 'board'; } catch { return 'board'; }
 }
 
 export default function App() {
@@ -59,11 +62,14 @@ export default function App() {
         <nav className="tabs" role="tablist">
           <button className={'tab' + (tab === 'board' ? ' on' : '')} role="tab" aria-selected={tab === 'board'} onClick={() => selectTab('board')}>דשבורד</button>
           <button className={'tab' + (tab === 'coach' ? ' on' : '')} role="tab" aria-selected={tab === 'coach'} onClick={() => selectTab('coach')}>מאמן מנטלי</button>
+          <button className={'tab' + (tab === 'subs' ? ' on' : '')} role="tab" aria-selected={tab === 'subs'} onClick={() => selectTab('subs')}>מנויים</button>
         </nav>
 
         {error && <div className="wip-warn">{error}</div>}
         {!state ? (
           <div className="loading">{error ? '' : 'טוען…'}</div>
+        ) : tab === 'subs' ? (
+          <Subscriptions />
         ) : tab === 'coach' ? (
           <Coach messages={state.coach} aiEnabled={state.ai.enabled} refresh={refresh} />
         ) : (

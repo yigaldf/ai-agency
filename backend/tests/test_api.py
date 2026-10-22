@@ -65,3 +65,20 @@ def test_full_flow():
         r = client.delete("/api/coach/messages")
         assert [m["content"] for m in r.json()] == ["שלום"]
         assert client.get("/api/state").json()["coach"] == []
+
+
+def test_subscriptions():
+    with client:
+        sub = {"name": "Claude Pro", "vendor": "Anthropic", "amount": 20, "currency": "usd", "cycle": "monthly", "nextCharge": "2026-11-01"}
+        r = client.put("/api/subscriptions/sub1", json=sub)
+        assert r.status_code == 200 and r.json()["currency"] == "USD" and r.json()["status"] == "active"
+        r = client.post("/api/subscriptions/bulk", json=[
+            {"id": "sub2", "name": "Railway", "amount": 5, "cycle": "monthly"},
+            {"id": "sub3", "name": "Domain", "amount": 60, "currency": "ILS", "cycle": "yearly", "status": "cancelled"},
+        ])
+        assert r.status_code == 200 and len(r.json()) == 2
+        assert [s["id"] for s in client.get("/api/subscriptions").json()] == ["sub1", "sub2", "sub3"]
+        assert client.put("/api/subscriptions/bad", json={**sub, "cycle": "daily"}).status_code == 422
+        assert client.delete("/api/subscriptions/sub3").json()["name"] == "Domain"
+        assert client.delete("/api/subscriptions/sub3").status_code == 404
+        assert len(client.get("/api/subscriptions").json()) == 2
