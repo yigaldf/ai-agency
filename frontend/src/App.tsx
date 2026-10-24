@@ -11,10 +11,10 @@ import { TODAY, heDate } from './lib/dates';
 import { Model } from './lib/model';
 import type { State } from './lib/types';
 
-type Tab = 'board' | 'coach' | 'subs';
+type Tab = 'board' | 'systems' | 'coach' | 'subs';
 
 function initialTab(): Tab {
-  const valid = (t: string | null): t is Tab => t === 'board' || t === 'coach' || t === 'subs';
+  const valid = (t: string | null): t is Tab => t === 'board' || t === 'systems' || t === 'coach' || t === 'subs';
   const h = location.hash.slice(1);
   if (valid(h)) return h;
   try { const t = localStorage.getItem('tab'); return valid(t) ? t : 'board'; } catch { return 'board'; }
@@ -61,6 +61,7 @@ export default function App() {
 
         <nav className="tabs" role="tablist">
           <button className={'tab' + (tab === 'board' ? ' on' : '')} role="tab" aria-selected={tab === 'board'} onClick={() => selectTab('board')}>דשבורד</button>
+          <button className={'tab' + (tab === 'systems' ? ' on' : '')} role="tab" aria-selected={tab === 'systems'} onClick={() => selectTab('systems')}>מערכות</button>
           <button className={'tab' + (tab === 'coach' ? ' on' : '')} role="tab" aria-selected={tab === 'coach'} onClick={() => selectTab('coach')}>מאמן מנטלי</button>
           <button className={'tab' + (tab === 'subs' ? ' on' : '')} role="tab" aria-selected={tab === 'subs'} onClick={() => selectTab('subs')}>מנויים</button>
         </nav>
@@ -68,6 +69,8 @@ export default function App() {
         {error && <div className="wip-warn">{error}</div>}
         {!state ? (
           <div className="loading">{error ? '' : 'טוען…'}</div>
+        ) : tab === 'systems' ? (
+          <Tree model={model} refresh={refresh} />
         ) : tab === 'subs' ? (
           <Subscriptions />
         ) : tab === 'coach' ? (
@@ -76,7 +79,6 @@ export default function App() {
           <>
             <Stats model={model} days={state.days} />
             <Morning model={model} days={state.days} aiEnabled={state.ai.enabled} refresh={refresh} />
-            <Tree model={model} refresh={refresh} />
             <History days={state.days} />
           </>
         )}
