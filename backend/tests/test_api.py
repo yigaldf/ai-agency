@@ -3,6 +3,7 @@ import tempfile
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///" + os.path.join(tempfile.mkdtemp(), "test.db"))
 os.environ.pop("ANTHROPIC_API_KEY", None)
+os.environ["SEED_FILE"] = "/nonexistent/seed.json"  # tests exercise /api/import explicitly
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -65,3 +66,44 @@ def test_full_flow():
         r = client.delete("/api/coach/messages")
         assert [m["content"] for m in r.json()] == ["שלום"]
         assert client.get("/api/state").json()["coach"] == []
+
+
+def test_subscriptions():
+    with client:
+        sub = {"name": "Claude Pro", "vendor": "Anthropic", "amount": 20, "currency": "usd", "cycle": "monthly", "nextCharge": "2026-11-01"}
+        r = client.put("/api/subscriptions/sub1", json=sub)
+        assert r.status_code == 200 and r.json()["currency"] == "USD" and r.json()["status"] == "active"
+        r = client.post("/api/subscriptions/bulk", json=[
+            {"id": "sub2", "name": "Railway", "amount": 5, "cycle": "monthly"},
+            {"id": "sub3", "name": "Domain", "amount": 60, "currency": "ILS", "cycle": "yearly", "status": "cancelled"},
+        ])
+        assert r.status_code == 200 and len(r.json()) == 2
+        assert [s["id"] for s in client.get("/api/subscriptions").json()] == ["sub1", "sub2", "sub3"]
+        assert client.put("/api/subscriptions/bad", json={**sub, "cycle": "daily"}).status_code == 422
+        assert client.delete("/api/subscriptions/sub3").json()["name"] == "Domain"
+        assert client.delete("/api/subscriptions/sub3").status_code == 404
+        assert len(client.get("/api/subscriptions").json()) == 2
+
+
+def test_seed_file_imports_into_empty_db(tmp_path):
+    """The repo's seed file must load cleanly: parents before children, FKs intact."""
+    import json
+    from pathlib import Path
+
+    seed = Path(__file__).resolve().parent.parent / "seed" / "initial_data.json"
+    payload = json.loads(seed.read_text(encoding="utf-8"))
+    with client:
+        # wipe anything earlier tests left behind so the import endpoint is exercised on its own
+        for s in client.get("/api/state").json()["systems"]:
+            client.delete(f"/api/systems/{s['id']}")
+        r = client.post("/api/import", json=payload)
+        assert r.status_code == 200, r.text
+        assert r.json()["systems"] == len(payload["systems"]) and r.json()["tasks"] == len(payload["tasks"])
+        state = client.get("/api/state").json()
+        assert len(state["systems"]) == len(payload["systems"])
+        assert len(state["tasks"]) == len(payload["tasks"])
+        assert {t["parentId"] for t in state["tasks"] if t["parentId"]} <= {t["id"] for t in state["tasks"]}
+        assert len(state["coach"]) >= len(payload["coach"])
+        # idempotent: importing again does not duplicate systems/tasks
+        client.post("/api/import", json={**payload, "coach": []})
+        assert len(client.get("/api/state").json()["tasks"]) == len(payload["tasks"])

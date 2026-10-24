@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -59,3 +59,23 @@ class CoachMessage(Base):
     role: Mapped[str] = mapped_column(String(10))  # user | assistant
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    vendor: Mapped[str] = mapped_column(String(200), default="")
+    amount: Mapped[float] = mapped_column(Float, default=0)
+    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    cycle: Mapped[str] = mapped_column(String(10), default="monthly")  # monthly | yearly | weekly
+    status: Mapped[str] = mapped_column(String(10), default="active")  # active | cancelled | trial
+    category: Mapped[str] = mapped_column(String(50), default="")
+    next_charge: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD
+    last_charge: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    payment_method: Mapped[str] = mapped_column(String(100), default="")
+    cancel_url: Mapped[str] = mapped_column(String(500), default="")
+    source_url: Mapped[str] = mapped_column(String(500), default="")  # the email it was found in
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[str | None] = mapped_column(String(10), nullable=True)

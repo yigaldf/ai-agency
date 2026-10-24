@@ -16,14 +16,54 @@ from sqlalchemy.orm import Session
 from . import ai, schemas
 from .db import Base, SessionLocal, engine, get_db
 from .logic import TaskTree, apply_progress
-from .models import CoachMessage, Day, System, Task
+from .models import CoachMessage, Day, Subscription, System, Task
 from .prompts import COACH_RULES, coach_context, feedback_prompt
 
+
+
+SEED_FILE = Path(os.environ.get("SEED_FILE", Path(__file__).resolve().parent.parent / "seed" / "initial_data.json"))
+
+
+def import_payload(db: Session, payload: schemas.ImportPayload) -> dict[str, int]:
+    """Upserts everything in the payload. Parents before children so FKs hold."""
+    for s in payload.systems:
+        row = db.get(System, s.id) or System(id=s.id)
+        row.name, row.order, row.created_at = s.name, s.order, s.created_at
+        row.links = [l.model_dump() for l in s.links]
+        db.add(row)
+    db.flush()
+    for t in sorted(payload.tasks, key=lambda t: 0 if t.parent_id is None else 1):
+        row = db.get(Task, t.id) or Task(id=t.id)
+        _set_task(row, schemas.TaskIn(**t.model_dump(exclude={"id"})))
+        db.add(row)
+    for d in payload.days:
+        row = db.get(Day, d.id) or Day(id=d.id)
+        row.yesterday_text, row.today_text, row.feedback = d.yesterday_text, d.today_text, d.feedback
+        row.plan, row.events = [p.model_dump() for p in d.plan], d.events
+        row.feedback_at, row.saved_at = d.feedback_at, d.saved_at
+        db.add(row)
+    for m in payload.coach:
+        db.add(CoachMessage(role=m.role, content=m.content, created_at=m.created_at or now()))
+    db.commit()
+    return {"systems": len(payload.systems), "tasks": len(payload.tasks), "days": len(payload.days), "coach": len(payload.coach)}
+
+
+def seed_if_empty() -> None:
+    """First boot on a fresh database: load the data exported from the claude.ai dashboard."""
+    if not SEED_FILE.is_file():
+        return
+    with SessionLocal() as db:
+        if db.scalars(select(System).limit(1)).first() is not None:
+            return
+        payload = schemas.ImportPayload.model_validate_json(SEED_FILE.read_text(encoding="utf-8"))
+        counts = import_payload(db, payload)
+        print(f"seeded empty database from {SEED_FILE}: {counts}")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    seed_if_empty()
     yield
 
 
@@ -278,6 +318,57 @@ def coach_restore(body: list[schemas.CoachMessageOut], db: Session = Depends(get
     db.add_all(rows)
     db.commit()
     return rows
+
+
+# ---------- import ----------
+@app.post("/api/import")
+def import_data(payload: schemas.ImportPayload, db: Session = Depends(get_db)):
+    """Upserts a full export (systems, tasks, days, coach). Existing rows with the same id are overwritten."""
+    return import_payload(db, payload)
+
+
+# ---------- subscriptions ----------
+@app.get("/api/subscriptions", response_model=list[schemas.SubscriptionOut], response_model_by_alias=True)
+def list_subscriptions(db: Session = Depends(get_db)):
+    return db.scalars(select(Subscription).order_by(Subscription.status, Subscription.name)).all()
+
+
+def _set_sub(s: Subscription, body: schemas.SubscriptionIn) -> None:
+    for k, v in body.model_dump(by_alias=False).items():
+        setattr(s, k, v.upper() if k == "currency" else v)
+
+
+@app.put("/api/subscriptions/{sub_id}", response_model=schemas.SubscriptionOut, response_model_by_alias=True)
+def upsert_subscription(sub_id: str, body: schemas.SubscriptionIn, db: Session = Depends(get_db)):
+    s = db.get(Subscription, sub_id) or Subscription(id=sub_id)
+    _set_sub(s, body)
+    db.add(s)
+    db.commit()
+    return s
+
+
+@app.post("/api/subscriptions/bulk", response_model=list[schemas.SubscriptionOut], response_model_by_alias=True)
+def upsert_subscriptions(body: list[schemas.SubscriptionWithId], db: Session = Depends(get_db)):
+    """Import or restore many subscriptions at once."""
+    out = []
+    for item in body:
+        s = db.get(Subscription, item.id) or Subscription(id=item.id)
+        _set_sub(s, schemas.SubscriptionIn(**item.model_dump(exclude={"id"})))
+        db.add(s)
+        out.append(s)
+    db.commit()
+    return out
+
+
+@app.delete("/api/subscriptions/{sub_id}", response_model=schemas.SubscriptionOut, response_model_by_alias=True)
+def delete_subscription(sub_id: str, db: Session = Depends(get_db)):
+    s = db.get(Subscription, sub_id)
+    if not s:
+        raise HTTPException(404)
+    out = schemas.SubscriptionOut.model_validate(s)
+    db.delete(s)
+    db.commit()
+    return out
 
 
 # ---------- the React app (built into backend/static by the Dockerfile) ----------

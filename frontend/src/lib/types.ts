@@ -48,3 +48,24 @@ export interface State {
   coach: CoachMessage[];
   ai: { enabled: boolean; model: string };
 }
+
+export type SubCycle = 'monthly' | 'yearly' | 'weekly';
+export type SubStatus = 'active' | 'cancelled' | 'trial';
+
+export interface Subscription {
+  id: string;
+  name: string;
+  vendor: string;
+  amount: number;
+  currency: string;
+  cycle: SubCycle;
+  status: SubStatus;
+  category: string;
+  nextCharge: string | null;
+  lastCharge: string | null;
+  paymentMethod: string;
+  cancelUrl: string;
+  sourceUrl: string;
+  notes: string;
+  createdAt: string | null;
+}

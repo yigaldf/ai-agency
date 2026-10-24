@@ -1,4 +1,4 @@
-import type { CoachMessage, Day, PlanItem, State, System, Task } from './types';
+import type { CoachMessage, Day, PlanItem, State, Subscription, System, Task } from './types';
 
 export class ApiError extends Error {
   constructor(public code: string, message?: string, public text = '') {
@@ -27,6 +27,10 @@ export const api = {
 
   patchDay: (id: string, patch: { yesterdayText?: string; todayText?: string; plan?: PlanItem[]; saved?: boolean }) =>
     req<Day>(`/days/${id}`, { method: 'PATCH', body: json(patch) }),
+
+  subscriptions: () => req<Subscription[]>('/subscriptions'),
+  putSubscription: (s: Subscription) => req<Subscription>(`/subscriptions/${s.id}`, { method: 'PUT', body: json(s) }),
+  deleteSubscription: (id: string) => req<Subscription>(`/subscriptions/${id}`, { method: 'DELETE' }),
 
   clearCoach: () => req<CoachMessage[]>('/coach/messages', { method: 'DELETE' }),
   restoreCoach: (msgs: CoachMessage[]) => req<CoachMessage[]>('/coach/restore', { method: 'POST', body: json(msgs) }),
