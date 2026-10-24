@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { TODAY, daysAgo, heDate, uid } from '../lib/dates';
 import type { Subscription, SubCycle, SubStatus } from '../lib/types';
@@ -22,6 +22,24 @@ export function Subscriptions() {
   const [subs, setSubs] = useState<Subscription[] | null>(null);
   const [editing, setEditing] = useState<Subscription | null>(null);
   const [showCancelled, setShowCancelled] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  // Import a JSON file: either {"subscriptions": [...]} or a bare array.
+  const importFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      const parsed = JSON.parse(await f.text());
+      const list = Array.isArray(parsed) ? parsed : parsed.subscriptions;
+      if (!Array.isArray(list)) throw new Error('bad shape');
+      const r = await api.importData({ subscriptions: list });
+      await load();
+      toast(`יובאו ${r.subscriptions} מנויים`);
+    } catch {
+      toast('הקובץ לא תקין. צריך JSON עם מערך subscriptions.');
+    }
+  };
 
   const load = async () => setSubs(await api.subscriptions());
   useEffect(() => { load(); }, []);
@@ -72,6 +90,8 @@ export function Subscriptions() {
           </div>
           <div className="row">
             <label className="row small muted"><input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} /> הצג מבוטלים</label>
+            <button className="ghost" onClick={() => fileInput.current?.click()}>ייבוא JSON</button>
+            <input ref={fileInput} type="file" accept="application/json,.json" hidden onChange={importFile} />
             <button className="primary" onClick={() => setEditing(blank())}>+ מנוי</button>
           </div>
         </div>

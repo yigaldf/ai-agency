@@ -107,3 +107,17 @@ def test_seed_file_imports_into_empty_db(tmp_path):
         # idempotent: importing again does not duplicate systems/tasks
         client.post("/api/import", json={**payload, "coach": []})
         assert len(client.get("/api/state").json()["tasks"]) == len(payload["tasks"])
+
+
+def test_import_subscriptions():
+    subs = [
+        {"id": "sub-nba", "name": "NBA League Pass", "vendor": "NBA", "amount": 419.99, "currency": "ILS", "cycle": "yearly", "nextCharge": "2027-10-03"},
+        {"id": "sub-claude-max", "name": "Claude Max", "vendor": "Anthropic", "amount": 100, "currency": "usd", "cycle": "monthly"},
+    ]
+    with client:
+        r = client.post("/api/import", json={"subscriptions": subs})
+        assert r.status_code == 200, r.text
+        assert r.json()["subscriptions"] == 2
+        got = {s["id"]: s for s in client.get("/api/subscriptions").json()}
+        assert got["sub-nba"]["cycle"] == "yearly" and got["sub-nba"]["amount"] == 419.99
+        assert got["sub-claude-max"]["currency"] == "USD" and got["sub-claude-max"]["status"] == "active"

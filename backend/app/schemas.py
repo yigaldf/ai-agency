@@ -147,6 +147,7 @@ class ImportPayload(Camel):
     tasks: list[TaskWithId] = []
     days: list[DayOut] = []
     coach: list[CoachMessageImport] = []
+    subscriptions: list[SubscriptionWithId] = []
 
 
 class SystemWithId(SystemIn):

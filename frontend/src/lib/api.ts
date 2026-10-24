@@ -31,6 +31,8 @@ export const api = {
   subscriptions: () => req<Subscription[]>('/subscriptions'),
   putSubscription: (s: Subscription) => req<Subscription>(`/subscriptions/${s.id}`, { method: 'PUT', body: json(s) }),
   deleteSubscription: (id: string) => req<Subscription>(`/subscriptions/${id}`, { method: 'DELETE' }),
+  importData: (payload: { subscriptions?: Partial<Subscription>[] }) =>
+    req<{ subscriptions: number }>('/import', { method: 'POST', body: json(payload) }),
 
   clearCoach: () => req<CoachMessage[]>('/coach/messages', { method: 'DELETE' }),
   restoreCoach: (msgs: CoachMessage[]) => req<CoachMessage[]>('/coach/restore', { method: 'POST', body: json(msgs) }),

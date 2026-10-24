@@ -44,20 +44,29 @@ def import_payload(db: Session, payload: schemas.ImportPayload) -> dict[str, int
         db.add(row)
     for m in payload.coach:
         db.add(CoachMessage(role=m.role, content=m.content, created_at=m.created_at or now()))
+    for item in payload.subscriptions:
+        row = db.get(Subscription, item.id) or Subscription(id=item.id)
+        _set_sub(row, schemas.SubscriptionIn(**item.model_dump(exclude={"id"})))
+        db.add(row)
     db.commit()
-    return {"systems": len(payload.systems), "tasks": len(payload.tasks), "days": len(payload.days), "coach": len(payload.coach)}
+    return {"systems": len(payload.systems), "tasks": len(payload.tasks), "days": len(payload.days), "coach": len(payload.coach), "subscriptions": len(payload.subscriptions)}
 
 
 def seed_if_empty() -> None:
     """First boot on a fresh database: load the data exported from the claude.ai dashboard."""
     if not SEED_FILE.is_file():
         return
+    payload = schemas.ImportPayload.model_validate_json(SEED_FILE.read_text(encoding="utf-8"))
     with SessionLocal() as db:
+        # each area is seeded independently, so a seed added later still lands on a database that already has data
         if db.scalars(select(System).limit(1)).first() is not None:
+            payload.systems, payload.tasks, payload.days, payload.coach = [], [], [], []
+        if db.scalars(select(Subscription).limit(1)).first() is not None:
+            payload.subscriptions = []
+        if not any([payload.systems, payload.tasks, payload.days, payload.coach, payload.subscriptions]):
             return
-        payload = schemas.ImportPayload.model_validate_json(SEED_FILE.read_text(encoding="utf-8"))
         counts = import_payload(db, payload)
-        print(f"seeded empty database from {SEED_FILE}: {counts}")
+        print(f"seeded database from {SEED_FILE}: {counts}")
 
 
 @asynccontextmanager
