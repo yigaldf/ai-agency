@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from . import ai, schemas
 from .db import Base, SessionLocal, engine, get_db
 from .logic import TaskTree, apply_progress
-from .models import CoachMessage, Day, Subscription, System, Task
+from .models import CoachMessage, Day, Routine, RoutineCheck, Subscription, System, Task
 from .prompts import COACH_RULES, coach_context, feedback_prompt
 
 
@@ -335,6 +335,67 @@ def coach_restore(body: list[schemas.CoachMessageOut], db: Session = Depends(get
 def import_data(payload: schemas.ImportPayload, db: Session = Depends(get_db)):
     """Upserts a full export (systems, tasks, days, coach). Existing rows with the same id are overwritten."""
     return import_payload(db, payload)
+
+
+# ---------- routines (recurring tasks) ----------
+@app.get("/api/routines", response_model=schemas.RoutinesState, response_model_by_alias=True)
+def list_routines(start: str, end: str, db: Session = Depends(get_db)):
+    """Routines plus the checks between start and end (inclusive, YYYY-MM-DD)."""
+    routines = db.scalars(select(Routine).order_by(Routine.order, Routine.title)).all()
+    checks = db.scalars(select(RoutineCheck).where(RoutineCheck.date >= start, RoutineCheck.date <= end)).all()
+    return schemas.RoutinesState(routines=routines, checks=checks)
+
+
+@app.put("/api/routines/{routine_id}", response_model=schemas.RoutineOut, response_model_by_alias=True)
+def upsert_routine(routine_id: str, body: schemas.RoutineIn, db: Session = Depends(get_db)):
+    if any(d < 0 or d > 6 for d in body.days):
+        raise HTTPException(422, "days must be 0..6")
+    r = db.get(Routine, routine_id) or Routine(id=routine_id)
+    r.title, r.order, r.active, r.notes, r.created_at = body.title.strip(), body.order, body.active, body.notes, body.created_at
+    r.days = sorted(set(body.days))
+    db.add(r)
+    db.commit()
+    return r
+
+
+@app.delete("/api/routines/{routine_id}")
+def delete_routine(routine_id: str, db: Session = Depends(get_db)):
+    r = db.get(Routine, routine_id)
+    if not r:
+        raise HTTPException(404)
+    checks = db.scalars(select(RoutineCheck).where(RoutineCheck.routine_id == routine_id)).all()
+    out = {"routine": schemas.RoutineOut.model_validate(r).model_dump(by_alias=True), "checks": [c.date for c in checks]}
+    for c in checks:
+        db.delete(c)
+    db.delete(r)
+    db.commit()
+    return out
+
+
+@app.post("/api/routines/{routine_id}/restore-checks", response_model=int)
+def restore_checks(routine_id: str, dates: list[str], db: Session = Depends(get_db)):
+    if not db.get(Routine, routine_id):
+        raise HTTPException(404)
+    existing = {c.date for c in db.scalars(select(RoutineCheck).where(RoutineCheck.routine_id == routine_id)).all()}
+    new = [RoutineCheck(routine_id=routine_id, date=d) for d in set(dates) - existing]
+    db.add_all(new)
+    db.commit()
+    return len(new)
+
+
+@app.post("/api/routines/{routine_id}/check", response_model=schemas.RoutineCheckOut | None, response_model_by_alias=True)
+def check_routine(routine_id: str, body: schemas.RoutineCheckIn, db: Session = Depends(get_db)):
+    if not db.get(Routine, routine_id):
+        raise HTTPException(404)
+    existing = db.scalars(select(RoutineCheck).where(RoutineCheck.routine_id == routine_id, RoutineCheck.date == body.date)).first()
+    if body.done and not existing:
+        existing = RoutineCheck(routine_id=routine_id, date=body.date)
+        db.add(existing)
+    elif not body.done and existing:
+        db.delete(existing)
+        existing = None
+    db.commit()
+    return existing
 
 
 # ---------- subscriptions ----------

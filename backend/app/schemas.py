@@ -152,3 +152,31 @@ class ImportPayload(Camel):
 
 class SystemWithId(SystemIn):
     id: str
+
+
+class RoutineIn(Camel):
+    title: str = Field(min_length=1, max_length=300)
+    days: list[int] = Field(default=[], max_length=7)
+    order: int = 0
+    active: bool = True
+    notes: str = ""
+    created_at: str | None = None
+
+
+class RoutineOut(RoutineIn):
+    id: str
+
+
+class RoutineCheckIn(Camel):
+    date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    done: bool = True
+
+
+class RoutineCheckOut(Camel):
+    routine_id: str
+    date: str
+
+
+class RoutinesState(Camel):
+    routines: list[RoutineOut]
+    checks: list[RoutineCheckOut]

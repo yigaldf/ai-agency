@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -79,3 +79,26 @@ class Subscription(Base):
     source_url: Mapped[str] = mapped_column(String(500), default="")  # the email it was found in
     notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+
+class Routine(Base):
+    """A recurring task: daily, or on fixed weekdays (0 = Sunday … 6 = Saturday)."""
+
+    __tablename__ = "routines"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    days: Mapped[list] = mapped_column(JSON, default=list)  # [] = every day
+    order: Mapped[int] = mapped_column(Integer, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[str | None] = mapped_column(String(10), nullable=True)
+
+
+class RoutineCheck(Base):
+    __tablename__ = "routine_checks"
+    __table_args__ = (UniqueConstraint("routine_id", "date", name="uq_routine_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    routine_id: Mapped[str] = mapped_column(String(40), ForeignKey("routines.id", ondelete="CASCADE"), index=True)
+    date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD, client's local date

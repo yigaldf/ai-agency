@@ -121,3 +121,25 @@ def test_import_subscriptions():
         got = {s["id"]: s for s in client.get("/api/subscriptions").json()}
         assert got["sub-nba"]["cycle"] == "yearly" and got["sub-nba"]["amount"] == 419.99
         assert got["sub-claude-max"]["currency"] == "USD" and got["sub-claude-max"]["status"] == "active"
+
+
+def test_routines():
+    with client:
+        r = client.put("/api/routines/r1", json={"title": "מדיטציה", "days": [], "order": 1})
+        assert r.status_code == 200 and r.json()["days"] == []
+        r = client.put("/api/routines/r2", json={"title": "ריצה", "days": [0, 2, 4, 2]})
+        assert r.json()["days"] == [0, 2, 4]
+        assert client.put("/api/routines/r3", json={"title": "x", "days": [7]}).status_code == 422
+        assert client.post("/api/routines/r1/check", json={"date": "2026-10-24"}).json()["date"] == "2026-10-24"
+        client.post("/api/routines/r1/check", json={"date": "2026-10-24"})  # idempotent
+        client.post("/api/routines/r2/check", json={"date": "2026-10-23"})
+        s = client.get("/api/routines", params={"start": "2026-10-18", "end": "2026-10-24"}).json()
+        assert len(s["routines"]) == 2 and len(s["checks"]) == 2
+        assert client.post("/api/routines/r1/check", json={"date": "2026-10-24", "done": False}).json() is None
+        s = client.get("/api/routines", params={"start": "2026-10-18", "end": "2026-10-24"}).json()
+        assert len(s["checks"]) == 1
+        d = client.delete("/api/routines/r2").json()
+        assert d["routine"]["title"] == "ריצה" and d["checks"] == ["2026-10-23"]
+        client.put("/api/routines/r2", json=d["routine"])
+        assert client.post("/api/routines/r2/restore-checks", json=d["checks"]).json() == 1
+        assert client.delete("/api/routines/nope").status_code == 404

@@ -1,4 +1,4 @@
-import type { CoachMessage, Day, PlanItem, State, Subscription, System, Task } from './types';
+import type { CoachMessage, Day, PlanItem, Routine, RoutinesState, State, Subscription, System, Task } from './types';
 
 export class ApiError extends Error {
   constructor(public code: string, message?: string, public text = '') {
@@ -33,6 +33,12 @@ export const api = {
   deleteSubscription: (id: string) => req<Subscription>(`/subscriptions/${id}`, { method: 'DELETE' }),
   importData: (payload: { subscriptions?: Partial<Subscription>[] }) =>
     req<{ subscriptions: number }>('/import', { method: 'POST', body: json(payload) }),
+
+  routines: (start: string, end: string) => req<RoutinesState>(`/routines?start=${start}&end=${end}`),
+  putRoutine: (r: Routine) => req<Routine>(`/routines/${r.id}`, { method: 'PUT', body: json(r) }),
+  deleteRoutine: (id: string) => req<{ routine: Routine; checks: string[] }>(`/routines/${id}`, { method: 'DELETE' }),
+  restoreRoutineChecks: (id: string, dates: string[]) => req<number>(`/routines/${id}/restore-checks`, { method: 'POST', body: json(dates) }),
+  checkRoutine: (id: string, date: string, done: boolean) => req<unknown>(`/routines/${id}/check`, { method: 'POST', body: json({ date, done }) }),
 
   clearCoach: () => req<CoachMessage[]>('/coach/messages', { method: 'DELETE' }),
   restoreCoach: (msgs: CoachMessage[]) => req<CoachMessage[]>('/coach/restore', { method: 'POST', body: json(msgs) }),

@@ -69,3 +69,15 @@ export interface Subscription {
   notes: string;
   createdAt: string | null;
 }
+
+export interface Routine {
+  id: string;
+  title: string;
+  days: number[]; // 0 = Sunday … 6 = Saturday; empty = every day
+  order: number;
+  active: boolean;
+  notes: string;
+  createdAt: string | null;
+}
+export interface RoutineCheck { routineId: string; date: string }
+export interface RoutinesState { routines: Routine[]; checks: RoutineCheck[] }
