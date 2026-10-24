@@ -55,6 +55,7 @@ def import_payload(db: Session, payload: schemas.ImportPayload) -> dict[str, int
 def seed_if_empty() -> None:
     """First boot on a fresh database: load the data exported from the claude.ai dashboard."""
     if not SEED_FILE.is_file():
+        print(f"seed file not found, skipping: {SEED_FILE}")
         return
     payload = schemas.ImportPayload.model_validate_json(SEED_FILE.read_text(encoding="utf-8"))
     with SessionLocal() as db:
