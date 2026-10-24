@@ -132,3 +132,22 @@ class SubscriptionOut(SubscriptionIn):
 
 class SubscriptionWithId(SubscriptionIn):
     id: str
+
+
+class CoachMessageImport(Camel):
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str
+    created_at: datetime | None = None
+
+
+class ImportPayload(Camel):
+    """Full export of the original claude.ai dashboard (or of this app)."""
+
+    systems: list[SystemWithId] = []
+    tasks: list[TaskWithId] = []
+    days: list[DayOut] = []
+    coach: list[CoachMessageImport] = []
+
+
+class SystemWithId(SystemIn):
+    id: str

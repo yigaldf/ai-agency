@@ -21,9 +21,49 @@ from .prompts import COACH_RULES, coach_context, feedback_prompt
 
 
 
+SEED_FILE = Path(os.environ.get("SEED_FILE", Path(__file__).resolve().parent.parent / "seed" / "initial_data.json"))
+
+
+def import_payload(db: Session, payload: schemas.ImportPayload) -> dict[str, int]:
+    """Upserts everything in the payload. Parents before children so FKs hold."""
+    for s in payload.systems:
+        row = db.get(System, s.id) or System(id=s.id)
+        row.name, row.order, row.created_at = s.name, s.order, s.created_at
+        row.links = [l.model_dump() for l in s.links]
+        db.add(row)
+    db.flush()
+    for t in sorted(payload.tasks, key=lambda t: 0 if t.parent_id is None else 1):
+        row = db.get(Task, t.id) or Task(id=t.id)
+        _set_task(row, schemas.TaskIn(**t.model_dump(exclude={"id"})))
+        db.add(row)
+    for d in payload.days:
+        row = db.get(Day, d.id) or Day(id=d.id)
+        row.yesterday_text, row.today_text, row.feedback = d.yesterday_text, d.today_text, d.feedback
+        row.plan, row.events = [p.model_dump() for p in d.plan], d.events
+        row.feedback_at, row.saved_at = d.feedback_at, d.saved_at
+        db.add(row)
+    for m in payload.coach:
+        db.add(CoachMessage(role=m.role, content=m.content, created_at=m.created_at or now()))
+    db.commit()
+    return {"systems": len(payload.systems), "tasks": len(payload.tasks), "days": len(payload.days), "coach": len(payload.coach)}
+
+
+def seed_if_empty() -> None:
+    """First boot on a fresh database: load the data exported from the claude.ai dashboard."""
+    if not SEED_FILE.is_file():
+        return
+    with SessionLocal() as db:
+        if db.scalars(select(System).limit(1)).first() is not None:
+            return
+        payload = schemas.ImportPayload.model_validate_json(SEED_FILE.read_text(encoding="utf-8"))
+        counts = import_payload(db, payload)
+        print(f"seeded empty database from {SEED_FILE}: {counts}")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    seed_if_empty()
     yield
 
 
@@ -278,6 +318,13 @@ def coach_restore(body: list[schemas.CoachMessageOut], db: Session = Depends(get
     db.add_all(rows)
     db.commit()
     return rows
+
+
+# ---------- import ----------
+@app.post("/api/import")
+def import_data(payload: schemas.ImportPayload, db: Session = Depends(get_db)):
+    """Upserts a full export (systems, tasks, days, coach). Existing rows with the same id are overwritten."""
+    return import_payload(db, payload)
 
 
 # ---------- subscriptions ----------

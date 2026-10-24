@@ -1,0 +1,452 @@
+{
+ "systems": [
+  {
+   "id": "s-elit",
+   "name": "עילית קליניק",
+   "order": 2,
+   "links": [
+    {
+     "label": "שאלון אדמין",
+     "url": "https://web-production-fc7a6.up.railway.app/admin"
+    },
+    {
+     "label": "שאלון בעלים",
+     "url": "https://web-production-fc7a6.up.railway.app/q/-dHqoWUeAlIUV4IRnNeZ-s3ZSaumEFa9"
+    }
+   ],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "s-malkishoart",
+   "name": "מלכישוערט",
+   "order": 1,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "s-onboarding",
+   "name": "AI Agency Onboarding",
+   "order": 3,
+   "links": [
+    {
+     "label": "חוברת עבודה",
+     "url": "https://docs.google.com/document/d/1B7R8aCYS3SOlk_iyH28vOkYRag2L2tLAPxXmI5oP7C4/edit?tab=t.0"
+    }
+   ],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "smvddrromxnd4",
+   "name": "בניית סרטוני ai",
+   "order": 4,
+   "links": [
+    {
+     "label": "שיעור 18.06.2026 - יצירת ווידאו, תמונות וחיבור API",
+     "url": "https://m.sapzis.co.il/LDStudentContentView?id=6a3416fd4ca0d5eff386fad7&type=lesson&courseId=6a21920bbe3cf56c110dc030"
+    },
+    {
+     "label": "חוברת עבודה",
+     "url": "https://m.sapzis.co.il/LDStudentContentView?id=6a3d6157e9a95fec6f5cb001&type=lesson&courseId=6a21920bbe3cf56c110dc030"
+    }
+   ],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "smvdds8omys8n",
+   "name": "מערכת לבנייה וניהול קמפיינים",
+   "order": 5,
+   "links": [],
+   "createdAt": "2026-10-18"
+  }
+ ],
+ "tasks": [
+  {
+   "id": "t-el-quiz",
+   "systemId": "s-elit",
+   "parentId": null,
+   "title": "בניית שאלון",
+   "progress": 100,
+   "status": "done",
+   "order": 1,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": "2026-10-17",
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "t-mk-domain",
+   "systemId": "s-malkishoart",
+   "parentId": "t-mk-prod",
+   "title": "חיבור לדומיין",
+   "progress": 100,
+   "status": "done",
+   "order": 1,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": "2026-10-17",
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "t-mk-invoice",
+   "systemId": "s-malkishoart",
+   "parentId": "t-mk-prod",
+   "title": "מעבר לחשבונית ירוקה",
+   "progress": 100,
+   "status": "done",
+   "order": 3,
+   "todayDate": "2026-10-18",
+   "startedAt": "2026-10-18",
+   "doneAt": "2026-10-18",
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "t-mk-plan",
+   "systemId": "s-malkishoart",
+   "parentId": "t-mk-prod",
+   "title": "בניית תוכנית עבודה",
+   "progress": 100,
+   "status": "done",
+   "order": 2,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": "2026-10-17",
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "t-mk-prod",
+   "systemId": "s-malkishoart",
+   "parentId": null,
+   "title": "מעבר ל-production",
+   "progress": 0,
+   "status": "active",
+   "order": 2,
+   "todayDate": null,
+   "startedAt": "2026-10-18",
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "t-mk-sms",
+   "systemId": "s-malkishoart",
+   "parentId": "t-mk-prod",
+   "title": "מעבר לחבילת SMS של נירית",
+   "progress": 100,
+   "status": "done",
+   "order": 4,
+   "todayDate": "2026-10-18",
+   "startedAt": "2026-10-18",
+   "doneAt": "2026-10-18",
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "t-mk-staging",
+   "systemId": "s-malkishoart",
+   "parentId": null,
+   "title": "בניית המערכת ב-staging",
+   "progress": 100,
+   "status": "done",
+   "order": 1,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": "2026-10-17",
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvddqkkcptep",
+   "systemId": "s-onboarding",
+   "parentId": null,
+   "title": "למלא שאלון סוג היזם ולשלוח לי את התוצאות",
+   "progress": 0,
+   "status": "backlog",
+   "order": 1,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvddqksjaezo",
+   "systemId": "s-onboarding",
+   "parentId": null,
+   "title": "לבצע את פרק 1 של חוברת העבודה",
+   "progress": 0,
+   "status": "backlog",
+   "order": 2,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvddql00le68",
+   "systemId": "s-onboarding",
+   "parentId": null,
+   "title": "לסיים מיינדסט של בעל סוכנות",
+   "progress": 0,
+   "status": "backlog",
+   "order": 3,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvddql8tgsdi",
+   "systemId": "s-onboarding",
+   "parentId": null,
+   "title": "לבנות את הפיץ לפי המבנה שדיברנו (מה אתה עושה,מה זה אומר)",
+   "progress": 0,
+   "status": "backlog",
+   "order": 4,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvddqlggdz0g",
+   "systemId": "s-onboarding",
+   "parentId": null,
+   "title": "להכין רשימה של כל האנשי קשר שיש לנו ולמפות אותם לפי שיטת רמזור (חוברת עבודה פרק השיווק)",
+   "progress": 0,
+   "status": "backlog",
+   "order": 5,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvddqloa36s2",
+   "systemId": "s-onboarding",
+   "parentId": null,
+   "title": "לצפות במודול אסטרטגיה עסקית",
+   "progress": 0,
+   "status": "backlog",
+   "order": 6,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvddvrw19qso",
+   "systemId": "smvddrromxnd4",
+   "parentId": null,
+   "title": "שיעור 13.08.2026 - עריכת וודיאו + חיבור סוכן לפרסום ברשתות",
+   "progress": 0,
+   "status": "backlog",
+   "order": 1,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [
+    {
+     "label": "שיעור 13.08.2026 - עריכת וודיאו + חיבור סוכן לפרסום ברשתות",
+     "url": "https://m.sapzis.co.il/LDStudentContentView?id=6a7e212a7763dc07c0c4c8b9&type=lesson&courseId=6a21920bbe3cf56c110dc030"
+    },
+    {
+     "label": "סיכום שיעור",
+     "url": "https://m.sapzis.co.il/LDStudentContentView?id=6a82048d1c3fe7c9138b0611&type=lesson&courseId=6a21920bbe3cf56c110dc030"
+    },
+    {
+     "label": "סיכום סקיל",
+     "url": "https://m.sapzis.co.il/LDStudentContentView?id=6a81770ff8d554b0f0e09a01&type=lesson&courseId=6a21920bbe3cf56c110dc030"
+    }
+   ],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvde41qc7iaz",
+   "systemId": "smvddrromxnd4",
+   "parentId": null,
+   "title": "08.10.2026 - יצירת סירטונים מתקדמים",
+   "progress": 5,
+   "status": "active",
+   "order": 2,
+   "todayDate": "2026-10-18",
+   "startedAt": "2026-10-18",
+   "doneAt": null,
+   "links": [
+    {
+     "label": "08.10.2026 - יצירת סירטונים מתקדמים",
+     "url": "https://m.sapzis.co.il/LDStudentContentView?id=6ac7cab1412363284703e3a8&type=lesson&courseId=6a21920bbe3cf56c110dc030"
+    },
+    {
+     "label": "סיכום",
+     "url": "https://file:///Users/yigalpinhasi/Documents/ai%20integration/1%20-%20%D7%A1%D7%99%D7%9B%D7%95%D7%9D%20%D7%94%D7%A9%D7%99%D7%A2%D7%95%D7%A8%2008.10.pdf"
+    }
+   ],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvde691evlfy",
+   "systemId": "smvdds8omys8n",
+   "parentId": null,
+   "title": "מפגש AI - בניית פאנל שיווקי",
+   "progress": 0,
+   "status": "backlog",
+   "order": 1,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [
+    {
+     "label": "מפגש AI - בניית פאנל שיווקי",
+     "url": "https://m.sapzis.co.il/LDStudentContentView?id=6a6b7377b68d8e58c9336118&type=lesson&courseId=6a21920bbe3cf56c110dc030"
+    },
+    {
+     "label": "חוברת סיכום",
+     "url": "https://media.base44.com/files/public/68514da70438cbcb17ff63f9/bef017f40_AI-Business-Mastery-29-07.pdf"
+    }
+   ],
+   "createdAt": "2026-10-18"
+  },
+  {
+   "id": "tmvffm8njfhgp",
+   "systemId": "s-elit",
+   "parentId": null,
+   "title": "סרט ai",
+   "progress": 0,
+   "status": "backlog",
+   "order": 2,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-19"
+  },
+  {
+   "id": "tmvdd1tr6xdmb",
+   "systemId": "s-malkishoart",
+   "parentId": null,
+   "title": "תחילת בדיקות",
+   "progress": 0,
+   "status": "backlog",
+   "order": 6,
+   "todayDate": null,
+   "startedAt": null,
+   "doneAt": null,
+   "links": [],
+   "createdAt": "2026-10-18"
+  }
+ ],
+ "days": [
+  {
+   "id": "2026-10-18",
+   "yesterdayText": "",
+   "todayText": "להתחיל: חשבונית ירוקה + חבילת SMS של נירית (מלכישוערט, מעבר ל-production).",
+   "plan": [
+    {
+     "id": "t-mk-invoice",
+     "title": "מעבר לחשבונית ירוקה"
+    },
+    {
+     "id": "t-mk-sms",
+     "title": "מעבר לחבילת SMS של נירית"
+    }
+   ],
+   "events": [
+    {
+     "at": "2026-10-18T16:29:49.861Z",
+     "from": 0,
+     "taskId": "t-mk-invoice",
+     "title": "מעבר לחשבונית ירוקה",
+     "to": 100
+    },
+    {
+     "at": "2026-10-18T16:29:52.714Z",
+     "from": 0,
+     "taskId": "t-mk-sms",
+     "title": "מעבר לחבילת SMS של נירית",
+     "to": 100
+    }
+   ],
+   "feedback": null,
+   "feedbackAt": null,
+   "savedAt": "2026-10-18T16:29:52.714Z"
+  },
+  {
+   "id": "2026-10-21",
+   "yesterdayText": "",
+   "todayText": "",
+   "plan": [],
+   "events": [
+    {
+     "at": "2026-10-21T08:46:53.248Z",
+     "from": 0,
+     "taskId": "tmvde41qc7iaz",
+     "title": "08.10.2026 - יצירת סירטונים מתקדמים",
+     "to": 60
+    },
+    {
+     "at": "2026-10-21T08:46:54.243Z",
+     "from": 60,
+     "taskId": "tmvde41qc7iaz",
+     "title": "08.10.2026 - יצירת סירטונים מתקדמים",
+     "to": 50
+    },
+    {
+     "at": "2026-10-21T08:46:55.372Z",
+     "from": 20,
+     "taskId": "tmvde41qc7iaz",
+     "title": "08.10.2026 - יצירת סירטונים מתקדמים",
+     "to": 5
+    }
+   ],
+   "feedback": null,
+   "feedbackAt": null,
+   "savedAt": null
+  }
+ ],
+ "coach": [
+  {
+   "role": "user",
+   "content": "אני מרגיש לחוץ ועייף, ימים עוברים ואני לא מסיים כלום.",
+   "createdAt": "2026-10-18T16:39:03.009Z"
+  },
+  {
+   "role": "user",
+   "content": "שוחחתי היום עם הבעלים של עלית קליניק , והוא אמר לי שפונים אליו הרבה בעלי crm\nהוא עדיין לא מילא את השאלון.\nאני מרגיש שהוא מכין את הקרקע להראות שהוא לא צריך או שהוא לא מתכוון לשל על זה סכום משמעותי.\nהבנתי שהוא מאד לא אוהב לנוציא כסף",
+   "createdAt": "2026-10-18T16:41:33.142Z"
+  },
+  {
+   "role": "assistant",
+   "content": "שומע אותך: אתה עייף ולחוץ, ועל זה נוספה שיחה עם הבעלים של עלית קליניק שהשאירה אותך עם תחושה שהוא מתרחק או מתכונן לא לשלם.\n\nאגב, הדשבורד מראה שסיימת את מלכישוערט במלואם ואת עילית קליניק, אז \"לא מסיים כלום\" לא לגמרי מדויק.\n\nלגבי הבעלים: בינתיים זו פרשנות שלך. ייתכן שהוא באמת מתחמק, וייתכן שהוא פשוט איש זהיר עם כסף שמשווה אפשרויות. מה שבטוח הוא שהשאלון הלא מלא הוא הצעד הבא הכי קונקרטי, ואפשר לבדוק אותו בלי לנחש.\n\nמה היית רוצה לדעת ממנו כדי שהחשש הזה יירגע: אם הוא רציני, או כמה הוא מוכן לשלם?",
+   "createdAt": "2026-10-18T16:41:47.227Z"
+  },
+  {
+   "role": "user",
+   "content": "הייתי רוצה להגיע איתו למצב שביום שליש אני מצליח לסחוף אותו ולהלהיב אותו על מערכת ,ֿ\nשתשנה את פני הדברים אצלו, ושבסופו של דבר אני אצליח לקבל סכום של מעל 15,000 ש״ח על מערכץ",
+   "createdAt": "2026-10-18T16:43:33.397Z"
+  },
+  {
+   "role": "assistant",
+   "content": "אז היעד ברור: פגישה ביום שלישי שבה הוא מתלהב, ומחיר של מעל 15,000 ש״ח. זה יעד טוב, והוא מגיע אחרי שיחה שהשאירה אותך לא שקט.\n\nדבר אחד שכדאי לשים לב אליו: אדם שלא אוהב להוציא כסף לא מתלהב מהמערכת, הוא מתלהב מהתוצאה. כשהוא יראה במספרים מה הוא מפסיד היום ומה הוא ירוויח, המחיר יהפוך להשקעה ולא להוצאה. וכדי לבנות את זה אתה צריך את הנתונים שלו, בדיוק מה שהשאלון אמור לתת.\n\nהצעד הקטן להיום: לשלוח לו הודעה קצרה, משפט או שניים, שמבקשת למלא את השאלון עד מחר, כי זה מה שיאפשר לך להגיע ליום שלישי עם הצעה מותאמת אליו.\n\nרוצה שננסח אותה יחד, או שיש משהו שמעכב אותך מלשלוח?",
+   "createdAt": "2026-10-18T16:43:38.599Z"
+  },
+  {
+   "role": "user",
+   "content": "לא, אני אשלח לו מחר תזכורת",
+   "createdAt": "2026-10-18T16:44:17.021Z"
+  },
+  {
+   "role": "assistant",
+   "content": "מקובל עליי, תזכורת מחר זה בסדר גמור. רק שים אותה במקום קבוע, שעה מסוימת ביומן או תזכורת בטלפון, כדי שלא תישאר עוד דבר פתוח בראש.\n\nושם לב שהיום כבר עשית את החלק הכי חשוב: דיברת איתו, הבנת איפה הוא עומד, והגדרת לעצמך יעד ברור ליום שלישי. זה לא \"כלום\".\n\nאם נשארה לך עוד חצי שעה של אנרגיה היום, מה משימה אחת קטנה שהיית שמח לסגור לפני שאתה מנתק, ולו רק צעד ראשון של 10 דקות? ואם אין, גם לעצור זה בסדר.",
+   "createdAt": "2026-10-18T16:44:21.245Z"
+  }
+ ]
+}
