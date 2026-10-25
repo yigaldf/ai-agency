@@ -195,5 +195,11 @@ class CalendarEvent(Camel):
 
 class CalendarOut(Camel):
     enabled: bool
+    source: str = ""  # google | ics | ""
     events: list[CalendarEvent] = []
     error: str | None = None
+
+
+class GoogleStatus(Camel):
+    configured: bool  # client id/secret present
+    connected: bool  # a refresh token is stored

@@ -1,4 +1,4 @@
-import type { CalendarOut, CoachMessage, Day, PlanItem, Routine, RoutinesState, State, Subscription, System, Task } from './types';
+import type { CalendarOut, CoachMessage, GoogleStatus, Day, PlanItem, Routine, RoutinesState, State, Subscription, System, Task } from './types';
 
 export class ApiError extends Error {
   constructor(public code: string, message?: string, public text = '') {
@@ -41,6 +41,8 @@ export const api = {
   checkRoutine: (id: string, date: string, done: boolean) => req<unknown>(`/routines/${id}/check`, { method: 'POST', body: json({ date, done }) }),
 
   calendar: (start: string, end: string) => req<CalendarOut>(`/calendar?start=${start}&end=${end}`),
+  googleStatus: () => req<GoogleStatus>('/google/status'),
+  googleDisconnect: () => req<GoogleStatus>('/google/disconnect', { method: 'POST' }),
 
   clearCoach: () => req<CoachMessage[]>('/coach/messages', { method: 'DELETE' }),
   restoreCoach: (msgs: CoachMessage[]) => req<CoachMessage[]>('/coach/restore', { method: 'POST', body: json(msgs) }),

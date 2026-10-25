@@ -64,7 +64,9 @@ npm run dev          # http://localhost:5173, קריאות /api מועברות �
 | `ANTHROPIC_API_KEY` | – | מפתח API של Anthropic. |
 | `DASHBOARD_PASSWORD` | ריק (ללא הגנה) | סיסמה ל-Basic Auth. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | המודל לפידבק ולמאמן. |
-| `CALENDAR_ICS_URL` | – | כתובת ה-iCal הסודית של Google Calendar. מציג פגישות בלשונית משימות שגרה. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | – | OAuth Client של Google (אפשר לשתף עם Roger). מאפשר 'חבר Google Calendar' בלשונית משימות שגרה. |
+| `PUBLIC_BASE_URL` | נגזר מהבקשה | הכתובת הציבורית של האפליקציה, לבניית ה-callback של OAuth. |
+| `CALENDAR_ICS_URL` | – | חלופה: כתובת ה-iCal הסודית של Google Calendar. |
 | `CALENDAR_TZ` | `Asia/Jerusalem` | אזור הזמן להצגת שעות מהיומן. |
 | `PORT` | `8000` | Railway מגדיר לבד. |
 

@@ -102,3 +102,12 @@ class RoutineCheck(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     routine_id: Mapped[str] = mapped_column(String(40), ForeignKey("routines.id", ondelete="CASCADE"), index=True)
     date: Mapped[str] = mapped_column(String(10))  # YYYY-MM-DD, client's local date
+
+
+class KeyValue(Base):
+    """Small settings store (Google OAuth credentials and state)."""
+
+    __tablename__ = "kv"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[dict] = mapped_column(JSON, default=dict)

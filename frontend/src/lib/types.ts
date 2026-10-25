@@ -92,4 +92,5 @@ export interface CalendarEvent {
   recurring: boolean;
   location: string;
 }
-export interface CalendarOut { enabled: boolean; events: CalendarEvent[]; error: string | null }
+export interface CalendarOut { enabled: boolean; source: string; events: CalendarEvent[]; error: string | null }
+export interface GoogleStatus { configured: boolean; connected: boolean }

@@ -8,12 +8,12 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import ai, calendar_feed, schemas
+from . import ai, calendar_feed, google_auth, schemas
 from .db import Base, SessionLocal, engine, get_db
 from .logic import TaskTree, apply_progress
 from .models import CoachMessage, Day, Routine, RoutineCheck, Subscription, System, Task
@@ -337,16 +337,58 @@ def import_data(payload: schemas.ImportPayload, db: Session = Depends(get_db)):
     return import_payload(db, payload)
 
 
-# ---------- calendar (read-only iCal feed) ----------
-@app.get("/api/calendar", response_model=schemas.CalendarOut, response_model_by_alias=True)
-def calendar_events(start: str, end: str):
-    if not calendar_feed.enabled():
-        return schemas.CalendarOut(enabled=False)
+# ---------- calendar: Google OAuth (preferred) or iCal feed ----------
+def _base(request: Request) -> str:
+    # behind Railway's proxy the scheme arrives in X-Forwarded-Proto
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    return f"{proto}://{request.headers.get('host', request.url.netloc)}"
+
+
+@app.get("/api/google/status", response_model=schemas.GoogleStatus, response_model_by_alias=True)
+def google_status(db: Session = Depends(get_db)):
+    return schemas.GoogleStatus(configured=google_auth.configured(), connected=google_auth.is_connected(db))
+
+
+@app.get("/oauth/google/start", include_in_schema=False)
+def google_start(request: Request, db: Session = Depends(get_db)):
+    if not google_auth.configured():
+        raise HTTPException(503, "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set")
+    return RedirectResponse(google_auth.authorization_url(db, _base(request)))
+
+
+@app.get("/oauth/google/callback", include_in_schema=False)
+def google_callback(request: Request, state: str = "", error: str | None = None, db: Session = Depends(get_db)):
+    if error:
+        return HTMLResponse(f"<p dir=rtl>החיבור בוטל: {error}. <a href='/#routines'>חזרה</a></p>", status_code=400)
     try:
-        events = calendar_feed.events_between(date.fromisoformat(start), date.fromisoformat(end))
-    except Exception as e:  # feed unreachable or malformed: the tab still renders
-        return schemas.CalendarOut(enabled=True, error=f"{type(e).__name__}: {e}"[:200])
-    return schemas.CalendarOut(enabled=True, events=events)
+        google_auth.handle_callback(db, _base(request), google_auth.redirect_uri(_base(request)) + "?" + request.url.query, state)
+    except Exception as e:
+        return HTMLResponse(f"<p dir=rtl>החיבור נכשל: {type(e).__name__}: {e}. <a href='/#routines'>חזרה</a></p>", status_code=400)
+    return RedirectResponse("/#routines", status_code=303)
+
+
+@app.post("/api/google/disconnect", response_model=schemas.GoogleStatus, response_model_by_alias=True)
+def google_disconnect(db: Session = Depends(get_db)):
+    google_auth.disconnect(db)
+    return schemas.GoogleStatus(configured=google_auth.configured(), connected=False)
+
+
+@app.get("/api/calendar", response_model=schemas.CalendarOut, response_model_by_alias=True)
+def calendar_events(start: str, end: str, db: Session = Depends(get_db)):
+    s, e = date.fromisoformat(start), date.fromisoformat(end)
+    if google_auth.is_connected(db):
+        try:
+            return schemas.CalendarOut(enabled=True, source="google", events=google_auth.events_between(db, s, e))
+        except google_auth.RevokedError as ex:
+            return schemas.CalendarOut(enabled=True, source="google", error=f"ההרשאה בוטלה, צריך לחבר מחדש ({ex})"[:200])
+        except Exception as ex:
+            return schemas.CalendarOut(enabled=True, source="google", error=f"{type(ex).__name__}: {ex}"[:200])
+    if calendar_feed.enabled():
+        try:
+            return schemas.CalendarOut(enabled=True, source="ics", events=calendar_feed.events_between(s, e))
+        except Exception as ex:  # feed unreachable or malformed: the tab still renders
+            return schemas.CalendarOut(enabled=True, source="ics", error=f"{type(ex).__name__}: {ex}"[:200])
+    return schemas.CalendarOut(enabled=False)
 
 
 # ---------- routines (recurring tasks) ----------

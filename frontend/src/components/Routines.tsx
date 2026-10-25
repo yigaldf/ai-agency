@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { api } from '../lib/api';
 import { TODAY, daysAgo, heDate, isoDate, uid } from '../lib/dates';
-import type { CalendarEvent, CalendarOut, Routine, RoutineCheck } from '../lib/types';
+import type { CalendarEvent, CalendarOut, GoogleStatus, Routine, RoutineCheck } from '../lib/types';
 import { useToast } from './Toast';
 
 const DAY_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש']; // 0 = Sunday … 6 = Saturday, same as Date#getDay()
@@ -19,6 +19,7 @@ export function Routines() {
   const [newDays, setNewDays] = useState<number[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
   const [cal, setCal] = useState<CalendarOut | null>(null);
+  const [google, setGoogle] = useState<GoogleStatus | null>(null);
   const weekAhead = useMemo(() => Array.from({ length: WEEK }, (_, i) => daysAgo(-i)), []); // today … +6
 
   // last 7 days, oldest first, ending today
@@ -31,7 +32,12 @@ export function Routines() {
     setChecks(new Set(s.checks.map((c: RoutineCheck) => key(c.routineId, c.date))));
   }, [dates]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.calendar(TODAY, weekAhead[WEEK - 1]).then(setCal).catch(() => setCal({ enabled: true, events: [], error: 'network' })); }, [weekAhead]);
+  const loadCal = useCallback(() => {
+    api.calendar(TODAY, weekAhead[WEEK - 1]).then(setCal).catch(() => setCal({ enabled: true, source: '', events: [], error: 'network' }));
+    api.googleStatus().then(setGoogle).catch(() => setGoogle(null));
+  }, [weekAhead]);
+  useEffect(() => { loadCal(); }, [loadCal]);
+  const disconnectGoogle = async () => { await api.googleDisconnect(); loadCal(); toast('היומן נותק'); };
 
   // turn a recurring calendar event into a routine on its weekday
   const addFromEvent = async (ev: CalendarEvent) => {
@@ -153,7 +159,7 @@ export function Routines() {
         )}
       </section>
 
-      <CalendarPanel cal={cal} dates={weekAhead} routines={routines} onAdd={addFromEvent} />
+      <CalendarPanel cal={cal} google={google} dates={weekAhead} routines={routines} onAdd={addFromEvent} onDisconnect={disconnectGoogle} />
     </>
   );
 }
@@ -188,8 +194,16 @@ function RoutineEditor({ r, onSave, onCancel }: { r: Routine; onSave: (r: Routin
 
 const timeOf = (iso: string) => iso.slice(11, 16);
 
-function CalendarPanel({ cal, dates, routines, onAdd }: { cal: CalendarOut | null; dates: string[]; routines: Routine[]; onAdd: (ev: CalendarEvent) => Promise<void> }) {
+interface CalProps {
+  cal: CalendarOut | null; google: GoogleStatus | null; dates: string[]; routines: Routine[];
+  onAdd: (ev: CalendarEvent) => Promise<void>; onDisconnect: () => Promise<void>;
+}
+
+function CalendarPanel({ cal, google, dates, routines, onAdd, onDisconnect }: CalProps) {
   const titles = new Set(routines.map((r) => r.title));
+  const connectBtn = google?.configured && !google.connected && (
+    <a className="lchip" href="/oauth/google/start"><span>חבר Google Calendar</span></a>
+  );
   return (
     <section className="panel">
       <div className="panel-head">
@@ -197,11 +211,20 @@ function CalendarPanel({ cal, dates, routines, onAdd }: { cal: CalendarOut | nul
           <h2>מהיומן</h2>
           <div className="muted small">פגישות ומשימות מ-Google Calendar לשבוע הקרוב. אירוע חוזר אפשר להפוך למשימת שגרה.</div>
         </div>
+        <div className="row">
+          {connectBtn}
+          {google?.connected && <><span className="chip active">Google מחובר</span><button className="ghost tiny" onClick={onDisconnect}>נתק</button></>}
+          {cal?.source === 'ics' && <span className="chip hold">iCal</span>}
+        </div>
       </div>
       {!cal ? (
         <div className="muted small">טוען יומן…</div>
       ) : !cal.enabled ? (
-        <div className="empty-state">היומן לא מחובר. בהגדרות השרת צריך להגדיר CALENDAR_ICS_URL עם כתובת ה-iCal הסודית של Google Calendar.</div>
+        <div className="empty-state">
+          {google?.configured
+            ? <>היומן עוד לא מחובר. <a href="/oauth/google/start">לחץ כאן לחיבור חשבון Google</a> (קריאת יומן בלבד).</>
+            : 'היומן לא מחובר. בהגדרות השרת צריך GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET (כמו ברוג׳ר), או CALENDAR_ICS_URL.'}
+        </div>
       ) : cal.error ? (
         <div className="wip-warn">לא הצלחתי לקרוא את היומן: {cal.error}</div>
       ) : (

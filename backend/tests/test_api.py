@@ -167,3 +167,11 @@ def test_calendar_feed_from_ics_file(monkeypatch):
     monkeypatch.setattr(calendar_feed, "ICS_URL", "")
     with client:
         assert client.get("/api/calendar", params={"start": "2026-10-25", "end": "2026-10-31"}).json()["enabled"] is False
+
+
+def test_google_oauth_not_configured():
+    with client:
+        st = client.get("/api/google/status").json()
+        assert st == {"configured": False, "connected": False}
+        assert client.get("/oauth/google/start", follow_redirects=False).status_code == 503
+        assert client.post("/api/google/disconnect").json()["connected"] is False
