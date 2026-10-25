@@ -211,8 +211,18 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 }
 
 /* task board: not started / active / finished */
-.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
-@media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+.boardwrap { display: grid; gap: 10px; }
+.subtabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.subtab { display: inline-flex; align-items: center; gap: 6px; font-family: var(--display); }
+.subtab.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.subtabs .back { margin-inline-start: auto; }
+.board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
+.board.focused { grid-template-columns: 1fr; }
+.board.focused .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.col-title { cursor: pointer; }
+.col-title:hover { color: var(--accent); }
+@media (max-width: 1000px) { .board { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .board { grid-template-columns: 1fr; } }
 .col-panel { padding: 14px; }
 .brow { display: grid; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
 .brow.done .title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
