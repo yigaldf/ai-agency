@@ -218,14 +218,21 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 .subtabs .back { margin-inline-start: auto; }
 .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
 .board.focused { grid-template-columns: 1fr; }
-.board.focused .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.board.focused .list { display: grid; grid-template-columns: 1fr; gap: 6px; }
+/* focused: one task per full-width row: title | path | progress | actions */
+.board.focused .brow { grid-template-columns: minmax(220px, 2fr) minmax(140px, 1fr) minmax(160px, 1.2fr) auto; align-items: center; column-gap: 14px; }
+.board.focused .brow .path { grid-column: auto; }
+.board.focused .brow .meta { grid-column: auto; }
+.board.focused .brow input[type=range] { grid-column: 3; margin: 0; }
+.board.focused .brow .ctl { justify-content: flex-end; }
+@media (max-width: 900px) { .board.focused .brow { grid-template-columns: 1fr; } .board.focused .brow input[type=range] { grid-column: auto; } }
 .col-title { cursor: pointer; }
 .col-title:hover { color: var(--accent); }
 @media (max-width: 1000px) { .board { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; } }
 .col-panel { padding: 14px; }
 .brow { display: grid; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
-.brow.done .title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+.brow.done .title { color: var(--muted); text-decoration: none; }
 .brow .meta { grid-column: auto; }
 .brow input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .brow .ctl { flex-wrap: wrap; }
