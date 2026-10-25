@@ -66,7 +66,6 @@ npm run dev          # http://localhost:5173, קריאות /api מועברות �
 | `CLAUDE_MODEL` | `claude-opus-5-5` | המודל לפידבק ולמאמן. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | – | OAuth Client של Google (אפשר לשתף עם Roger). מאפשר 'חבר Google Calendar' בלשונית משימות שגרה. |
 | `PUBLIC_BASE_URL` | נגזר מהבקשה | הכתובת הציבורית של האפליקציה, לבניית ה-callback של OAuth. |
-| `CALENDAR_ICS_URL` | – | חלופה: כתובת ה-iCal הסודית של Google Calendar. |
 | `CALENDAR_TZ` | `Asia/Jerusalem` | אזור הזמן להצגת שעות מהיומן. |
 | `PORT` | `8000` | Railway מגדיר לבד. |
 

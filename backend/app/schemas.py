@@ -195,7 +195,7 @@ class CalendarEvent(Camel):
 
 class CalendarOut(Camel):
     enabled: bool
-    source: str = ""  # google | ics | ""
+    source: str = ""  # "google" when connected
     events: list[CalendarEvent] = []
     error: str | None = None
 

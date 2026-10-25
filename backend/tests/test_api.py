@@ -145,32 +145,10 @@ def test_routines():
         assert client.delete("/api/routines/nope").status_code == 404
 
 
-def test_calendar_feed_from_ics_file(monkeypatch):
-    from pathlib import Path
-
-    from app import calendar_feed
-
-    monkeypatch.setattr(calendar_feed, "ICS_URL", str(Path(__file__).parent / "fixtures" / "sample.ics"))
-    calendar_feed._cache.update(at=0, cal=None)
-    with client:
-        r = client.get("/api/calendar", params={"start": "2026-10-25", "end": "2026-10-31"})
-        assert r.status_code == 200, r.text
-        body = r.json()
-        assert body["enabled"] is True and body["error"] is None
-        titles = [(e["date"], e["title"], e["allDay"], e["recurring"]) for e in body["events"]]
-        assert ("2026-10-25", "גיטרה עם אוהד ויקי", False, True) in titles
-        assert ("2026-10-28", "גלישה", True, True) in titles
-        assert ("2026-10-26", "יגאל x סשה - פגישה מס׳ 2", False, False) in titles
-        guitar = next(e for e in body["events"] if e["title"].startswith("גיטרה"))
-        assert guitar["start"].startswith("2026-10-25T16:20")
-
-    monkeypatch.setattr(calendar_feed, "ICS_URL", "")
-    with client:
-        assert client.get("/api/calendar", params={"start": "2026-10-25", "end": "2026-10-31"}).json()["enabled"] is False
-
-
 def test_google_oauth_not_configured():
     with client:
+        c = client.get("/api/calendar", params={"start": "2026-10-25", "end": "2026-10-31"}).json()
+        assert c["enabled"] is False and c["events"] == []
         st = client.get("/api/google/status").json()
         assert st == {"configured": False, "connected": False}
         assert client.get("/oauth/google/start", follow_redirects=False).status_code == 503

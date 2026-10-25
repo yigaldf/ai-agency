@@ -214,7 +214,6 @@ function CalendarPanel({ cal, google, dates, routines, onAdd, onDisconnect }: Ca
         <div className="row">
           {connectBtn}
           {google?.connected && <><span className="chip active">Google מחובר</span><button className="ghost tiny" onClick={onDisconnect}>נתק</button></>}
-          {cal?.source === 'ics' && <span className="chip hold">iCal</span>}
         </div>
       </div>
       {!cal ? (
@@ -223,7 +222,7 @@ function CalendarPanel({ cal, google, dates, routines, onAdd, onDisconnect }: Ca
         <div className="empty-state">
           {google?.configured
             ? <>היומן עוד לא מחובר. <a href="/oauth/google/start">לחץ כאן לחיבור חשבון Google</a> (קריאת יומן בלבד).</>
-            : 'היומן לא מחובר. בהגדרות השרת צריך GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET (כמו ברוג׳ר), או CALENDAR_ICS_URL.'}
+            : 'היומן לא מחובר. בהגדרות השרת צריך GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET (אותו OAuth Client כמו ברוג׳ר).'}
         </div>
       ) : cal.error ? (
         <div className="wip-warn">לא הצלחתי לקרוא את היומן: {cal.error}</div>

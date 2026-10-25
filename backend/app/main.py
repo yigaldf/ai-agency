@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import ai, calendar_feed, google_auth, schemas
+from . import ai, google_auth, schemas
 from .db import Base, SessionLocal, engine, get_db
 from .logic import TaskTree, apply_progress
 from .models import CoachMessage, Day, Routine, RoutineCheck, Subscription, System, Task
@@ -337,7 +337,7 @@ def import_data(payload: schemas.ImportPayload, db: Session = Depends(get_db)):
     return import_payload(db, payload)
 
 
-# ---------- calendar: Google OAuth (preferred) or iCal feed ----------
+# ---------- calendar: Google OAuth ----------
 def _base(request: Request) -> str:
     # behind Railway's proxy the scheme arrives in X-Forwarded-Proto
     proto = request.headers.get("x-forwarded-proto", request.url.scheme)
@@ -383,11 +383,6 @@ def calendar_events(start: str, end: str, db: Session = Depends(get_db)):
             return schemas.CalendarOut(enabled=True, source="google", error=f"ההרשאה בוטלה, צריך לחבר מחדש ({ex})"[:200])
         except Exception as ex:
             return schemas.CalendarOut(enabled=True, source="google", error=f"{type(ex).__name__}: {ex}"[:200])
-    if calendar_feed.enabled():
-        try:
-            return schemas.CalendarOut(enabled=True, source="ics", events=calendar_feed.events_between(s, e))
-        except Exception as ex:  # feed unreachable or malformed: the tab still renders
-            return schemas.CalendarOut(enabled=True, source="ics", error=f"{type(ex).__name__}: {ex}"[:200])
     return schemas.CalendarOut(enabled=False)
 
 
