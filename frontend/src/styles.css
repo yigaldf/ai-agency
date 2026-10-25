@@ -209,3 +209,13 @@ details[open] > summary .chev { transform: rotate(-90deg); }
   .routine-row .title, .routine-row .ctl { grid-column: 1 / -1; }
   .rcheck { width: 100%; }
 }
+
+/* task board: not started / active / finished */
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+.col-panel { padding: 14px; }
+.brow { display: grid; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
+.brow.done .title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+.brow .meta { grid-column: auto; }
+.brow input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
+.brow .ctl { flex-wrap: wrap; }

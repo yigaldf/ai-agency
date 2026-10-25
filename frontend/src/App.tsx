@@ -5,6 +5,7 @@ import { Morning } from './components/Morning';
 import { Routines } from './components/Routines';
 import { Stats } from './components/Stats';
 import { Subscriptions } from './components/Subscriptions';
+import { TaskBoard } from './components/TaskBoard';
 import { ToastProvider } from './components/Toast';
 import { Tree } from './components/Tree';
 import { api } from './lib/api';
@@ -62,8 +63,8 @@ export default function App() {
 
         <nav className="tabs" role="tablist">
           <button className={'tab' + (tab === 'board' ? ' on' : '')} role="tab" aria-selected={tab === 'board'} onClick={() => selectTab('board')}>משימות מקצועיות</button>
-          <button className={'tab' + (tab === 'systems' ? ' on' : '')} role="tab" aria-selected={tab === 'systems'} onClick={() => selectTab('systems')}>מערכות</button>
           <button className={'tab' + (tab === 'routines' ? ' on' : '')} role="tab" aria-selected={tab === 'routines'} onClick={() => selectTab('routines')}>משימות שגרה</button>
+          <button className={'tab' + (tab === 'systems' ? ' on' : '')} role="tab" aria-selected={tab === 'systems'} onClick={() => selectTab('systems')}>מערכות</button>
           <button className={'tab' + (tab === 'coach' ? ' on' : '')} role="tab" aria-selected={tab === 'coach'} onClick={() => selectTab('coach')}>מאמן מנטלי</button>
           <button className={'tab' + (tab === 'subs' ? ' on' : '')} role="tab" aria-selected={tab === 'subs'} onClick={() => selectTab('subs')}>מנויים</button>
         </nav>
@@ -82,6 +83,7 @@ export default function App() {
         ) : (
           <>
             <Stats model={model} days={state.days} />
+            <TaskBoard model={model} refresh={refresh} />
             <Morning model={model} days={state.days} aiEnabled={state.ai.enabled} refresh={refresh} />
             <History days={state.days} />
           </>
