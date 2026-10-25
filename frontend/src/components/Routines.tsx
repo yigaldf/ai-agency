@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { api } from '../lib/api';
-import { TODAY, daysAgo, isoDate, uid } from '../lib/dates';
-import type { Routine, RoutineCheck } from '../lib/types';
+import { TODAY, daysAgo, heDate, isoDate, uid } from '../lib/dates';
+import type { CalendarEvent, CalendarOut, Routine, RoutineCheck } from '../lib/types';
 import { useToast } from './Toast';
 
 const DAY_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש']; // 0 = Sunday … 6 = Saturday, same as Date#getDay()
@@ -18,6 +18,8 @@ export function Routines() {
   const [newTitle, setNewTitle] = useState('');
   const [newDays, setNewDays] = useState<number[]>([]);
   const [editing, setEditing] = useState<string | null>(null);
+  const [cal, setCal] = useState<CalendarOut | null>(null);
+  const weekAhead = useMemo(() => Array.from({ length: WEEK }, (_, i) => daysAgo(-i)), []); // today … +6
 
   // last 7 days, oldest first, ending today
   const dates = useMemo(() => Array.from({ length: WEEK }, (_, i) => daysAgo(WEEK - 1 - i)), []);
@@ -29,6 +31,15 @@ export function Routines() {
     setChecks(new Set(s.checks.map((c: RoutineCheck) => key(c.routineId, c.date))));
   }, [dates]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api.calendar(TODAY, weekAhead[WEEK - 1]).then(setCal).catch(() => setCal({ enabled: true, events: [], error: 'network' })); }, [weekAhead]);
+
+  // turn a recurring calendar event into a routine on its weekday
+  const addFromEvent = async (ev: CalendarEvent) => {
+    if ((routines ?? []).some((r) => r.title === ev.title)) return toast('כבר קיימת משימת שגרה בשם הזה');
+    await api.putRoutine({ id: uid('r'), title: ev.title, days: [weekdayOf(ev.date)], order: (routines?.length ?? 0) + 1, active: true, notes: 'מהיומן', createdAt: TODAY });
+    await load();
+    toast(`נוספה משימת שגרה: ${ev.title}`);
+  };
 
   const active = (routines ?? []).filter((r) => r.active);
   const dueToday = active.filter((r) => dueOn(r, TODAY));
@@ -141,6 +152,8 @@ export function Routines() {
           <div className="empty-state">אין משימות שגרה עדיין. הוסף אחת למעלה.</div>
         )}
       </section>
+
+      <CalendarPanel cal={cal} dates={weekAhead} routines={routines} onAdd={addFromEvent} />
     </>
   );
 }
@@ -170,5 +183,46 @@ function RoutineEditor({ r, onSave, onCancel }: { r: Routine; onSave: (r: Routin
         <button className="ghost" onClick={onCancel}>ביטול</button>
       </div>
     </div>
+  );
+}
+
+const timeOf = (iso: string) => iso.slice(11, 16);
+
+function CalendarPanel({ cal, dates, routines, onAdd }: { cal: CalendarOut | null; dates: string[]; routines: Routine[]; onAdd: (ev: CalendarEvent) => Promise<void> }) {
+  const titles = new Set(routines.map((r) => r.title));
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <h2>מהיומן</h2>
+          <div className="muted small">פגישות ומשימות מ-Google Calendar לשבוע הקרוב. אירוע חוזר אפשר להפוך למשימת שגרה.</div>
+        </div>
+      </div>
+      {!cal ? (
+        <div className="muted small">טוען יומן…</div>
+      ) : !cal.enabled ? (
+        <div className="empty-state">היומן לא מחובר. בהגדרות השרת צריך להגדיר CALENDAR_ICS_URL עם כתובת ה-iCal הסודית של Google Calendar.</div>
+      ) : cal.error ? (
+        <div className="wip-warn">לא הצלחתי לקרוא את היומן: {cal.error}</div>
+      ) : (
+        <div className="agenda">
+          {dates.map((d) => {
+            const evs = cal.events.filter((e) => e.date === d);
+            return (
+              <div className={'aday' + (d === TODAY ? ' today' : '')} key={d}>
+                <div className="d">{d === TODAY ? 'היום' : heDate(d)}</div>
+                {evs.length ? evs.map((e) => (
+                  <div className="aev" key={e.id}>
+                    <span className="num">{e.allDay ? 'כל היום' : `${timeOf(e.start)}–${timeOf(e.end)}`}</span>
+                    <span className="title">{e.title}{e.recurring && <span className="chip hold" style={{ marginInlineStart: 6 }}>חוזר</span>}</span>
+                    {e.recurring && !titles.has(e.title) && <button className="tiny" onClick={() => onAdd(e)}>+ שגרה</button>}
+                  </div>
+                )) : <div className="muted small">פנוי</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

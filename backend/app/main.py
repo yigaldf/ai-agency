@@ -4,7 +4,7 @@ import base64
 import os
 import secrets
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import ai, schemas
+from . import ai, calendar_feed, schemas
 from .db import Base, SessionLocal, engine, get_db
 from .logic import TaskTree, apply_progress
 from .models import CoachMessage, Day, Routine, RoutineCheck, Subscription, System, Task
@@ -335,6 +335,18 @@ def coach_restore(body: list[schemas.CoachMessageOut], db: Session = Depends(get
 def import_data(payload: schemas.ImportPayload, db: Session = Depends(get_db)):
     """Upserts a full export (systems, tasks, days, coach). Existing rows with the same id are overwritten."""
     return import_payload(db, payload)
+
+
+# ---------- calendar (read-only iCal feed) ----------
+@app.get("/api/calendar", response_model=schemas.CalendarOut, response_model_by_alias=True)
+def calendar_events(start: str, end: str):
+    if not calendar_feed.enabled():
+        return schemas.CalendarOut(enabled=False)
+    try:
+        events = calendar_feed.events_between(date.fromisoformat(start), date.fromisoformat(end))
+    except Exception as e:  # feed unreachable or malformed: the tab still renders
+        return schemas.CalendarOut(enabled=True, error=f"{type(e).__name__}: {e}"[:200])
+    return schemas.CalendarOut(enabled=True, events=events)
 
 
 # ---------- routines (recurring tasks) ----------

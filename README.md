@@ -64,6 +64,8 @@ npm run dev          # http://localhost:5173, קריאות /api מועברות �
 | `ANTHROPIC_API_KEY` | – | מפתח API של Anthropic. |
 | `DASHBOARD_PASSWORD` | ריק (ללא הגנה) | סיסמה ל-Basic Auth. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | המודל לפידבק ולמאמן. |
+| `CALENDAR_ICS_URL` | – | כתובת ה-iCal הסודית של Google Calendar. מציג פגישות בלשונית משימות שגרה. |
+| `CALENDAR_TZ` | `Asia/Jerusalem` | אזור הזמן להצגת שעות מהיומן. |
 | `PORT` | `8000` | Railway מגדיר לבד. |
 
 ## ייבוא נתונים מהדשבורד הישן ב-claude.ai

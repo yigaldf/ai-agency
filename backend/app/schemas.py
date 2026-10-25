@@ -180,3 +180,20 @@ class RoutineCheckOut(Camel):
 class RoutinesState(Camel):
     routines: list[RoutineOut]
     checks: list[RoutineCheckOut]
+
+
+class CalendarEvent(Camel):
+    id: str
+    title: str
+    start: str
+    end: str
+    date: str
+    all_day: bool
+    recurring: bool
+    location: str = ""
+
+
+class CalendarOut(Camel):
+    enabled: bool
+    events: list[CalendarEvent] = []
+    error: str | None = None

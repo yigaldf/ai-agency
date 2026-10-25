@@ -236,3 +236,12 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 .brow .meta { grid-column: auto; }
 .brow input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0; }
 .brow .ctl { flex-wrap: wrap; }
+
+/* calendar agenda */
+.agenda { display: grid; gap: 8px; }
+.aday { display: grid; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); }
+.aday.today { outline: 1px solid var(--today); }
+.aday .d { font-family: var(--display); font-weight: 500; }
+.aev { display: grid; grid-template-columns: 7.5em 1fr auto; gap: 8px; align-items: center; }
+.aev .num { color: var(--muted); font-size: 13px; }
+@media (max-width: 640px) { .aev { grid-template-columns: 1fr; } }

@@ -81,3 +81,15 @@ export interface Routine {
 }
 export interface RoutineCheck { routineId: string; date: string }
 export interface RoutinesState { routines: Routine[]; checks: RoutineCheck[] }
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string; // ISO, local time
+  end: string;
+  date: string; // YYYY-MM-DD
+  allDay: boolean;
+  recurring: boolean;
+  location: string;
+}
+export interface CalendarOut { enabled: boolean; events: CalendarEvent[]; error: string | null }
