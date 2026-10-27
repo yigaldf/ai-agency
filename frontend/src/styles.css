@@ -245,3 +245,8 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 .aev { display: grid; grid-template-columns: 7.5em 1fr auto; gap: 8px; align-items: center; }
 .aev .num { color: var(--muted); font-size: 13px; }
 @media (max-width: 640px) { .aev { grid-template-columns: 1fr; } }
+
+/* system reordering */
+.reorder { display: inline-flex; gap: 2px; }
+.reorder button { padding: 0 6px; font-size: 11px; line-height: 1.6; color: var(--muted); }
+.reorder button:disabled { opacity: .25; }

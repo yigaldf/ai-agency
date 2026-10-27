@@ -20,6 +20,19 @@ export function Tree({ model, refresh }: TreeProps) {
     await refresh();
   };
 
+  const ordered = model.systems.slice().sort((a, b) => Number(systemDone(model, a)) - Number(systemDone(model, b)) || a.order - b.order);
+
+  // swap with the neighbour in the displayed order and persist 1..n
+  const move = async (s: System, dir: -1 | 1) => {
+    const i = ordered.findIndex((x) => x.id === s.id);
+    const j = i + dir;
+    if (j < 0 || j >= ordered.length) return;
+    const next = ordered.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    await Promise.all(next.map((x, k) => (x.order !== k + 1 ? api.putSystem({ ...x, order: k + 1 }) : Promise.resolve())));
+    await refresh();
+  };
+
   const deleteSystem = async (s: System) => {
     const { system, tasks } = await api.deleteSystem(s.id);
     await refresh();
@@ -42,8 +55,9 @@ export function Tree({ model, refresh }: TreeProps) {
       </div>
       <div className="list" style={{ gap: 12 }}>
         {model.systems.length ? (
-          model.systems.slice().sort((a, b) => Number(systemDone(model, a)) - Number(systemDone(model, b)) || a.order - b.order).map((s) => (
-            <SystemCard key={s.id} s={s} model={model} refresh={refresh} onDelete={() => deleteSystem(s)} />
+          ordered.map((s, i) => (
+            <SystemCard key={s.id} s={s} model={model} refresh={refresh} onDelete={() => deleteSystem(s)}
+              onUp={i > 0 ? () => move(s, -1) : undefined} onDown={i < ordered.length - 1 ? () => move(s, 1) : undefined} />
           ))
         ) : (
           <div className="empty-state">אין מערכות עדיין. הוסף אחת למעלה.</div>
@@ -62,7 +76,9 @@ const systemDone = (model: Model, s: System) => {
 const openFirst = (model: Model) => (a: Task, b: Task) => Number(model.isDone(a)) - Number(model.isDone(b)) || a.order - b.order;
 
 // ---------- system ----------
-function SystemCard({ s, model, refresh, onDelete }: { s: System; model: Model; refresh: () => Promise<void>; onDelete: () => void }) {
+interface SystemCardProps { s: System; model: Model; refresh: () => Promise<void>; onDelete: () => void; onUp?: () => void; onDown?: () => void }
+
+function SystemCard({ s, model, refresh, onDelete, onUp, onDown }: SystemCardProps) {
   const ts = model.topTasks(s.id).sort(openFirst(model));
   const all = model.tasks.filter((t) => t.systemId === s.id && model.isLeaf(t));
   const avg = ts.length ? Math.round(ts.reduce((a, t) => a + model.prog(t), 0) / ts.length) : 0;
@@ -78,6 +94,10 @@ function SystemCard({ s, model, refresh, onDelete }: { s: System; model: Model; 
         <Bar pct={avg} full={allDone} />
         <span className="pct">{avg}%</span>
         {allDone && <span className="chip done">הסתיים</span>}
+        <span className="reorder">
+          <button className="tiny ghost" title="הזז למעלה" aria-label="הזז למעלה" disabled={!onUp} onClick={(e) => { e.preventDefault(); onUp?.(); }}>▲</button>
+          <button className="tiny ghost" title="הזז למטה" aria-label="הזז למטה" disabled={!onDown} onClick={(e) => { e.preventDefault(); onDown?.(); }}>▼</button>
+        </span>
         <button className="trash" title="מחק מערכת" aria-label="מחק מערכת" onClick={(e) => { e.preventDefault(); onDelete(); }}>🗑</button>
       </summary>
       <div className="body">
