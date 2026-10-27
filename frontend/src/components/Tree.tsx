@@ -42,7 +42,7 @@ export function Tree({ model, refresh }: TreeProps) {
       </div>
       <div className="list" style={{ gap: 12 }}>
         {model.systems.length ? (
-          model.systems.slice().sort((a, b) => a.order - b.order).map((s) => (
+          model.systems.slice().sort((a, b) => Number(systemDone(model, a)) - Number(systemDone(model, b)) || a.order - b.order).map((s) => (
             <SystemCard key={s.id} s={s} model={model} refresh={refresh} onDelete={() => deleteSystem(s)} />
           ))
         ) : (
@@ -53,9 +53,17 @@ export function Tree({ model, refresh }: TreeProps) {
   );
 }
 
+// a system is finished when it has tasks and every leaf is done
+const systemDone = (model: Model, s: System) => {
+  const leaves = model.tasks.filter((t) => t.systemId === s.id && model.isLeaf(t));
+  return leaves.length > 0 && leaves.every((t) => model.isDone(t));
+};
+// open items first, finished ones last, then the original order
+const openFirst = (model: Model) => (a: Task, b: Task) => Number(model.isDone(a)) - Number(model.isDone(b)) || a.order - b.order;
+
 // ---------- system ----------
 function SystemCard({ s, model, refresh, onDelete }: { s: System; model: Model; refresh: () => Promise<void>; onDelete: () => void }) {
-  const ts = model.topTasks(s.id);
+  const ts = model.topTasks(s.id).sort(openFirst(model));
   const all = model.tasks.filter((t) => t.systemId === s.id && model.isLeaf(t));
   const avg = ts.length ? Math.round(ts.reduce((a, t) => a + model.prog(t), 0) / ts.length) : 0;
   const allDone = all.length > 0 && all.every((t) => model.isDone(t));
@@ -83,7 +91,7 @@ function SystemCard({ s, model, refresh, onDelete }: { s: System; model: Model; 
 
 // ---------- task + sub-task ----------
 function TaskRow({ t, model, refresh }: { t: Task; model: Model; refresh: () => Promise<void> }) {
-  const subs = model.children(t.id);
+  const subs = model.children(t.id).slice().sort(openFirst(model));
   const p = model.prog(t);
   const done = model.isDone(t);
   const [open, setOpen] = useState(!done);
