@@ -5,6 +5,7 @@ import { useDragList } from '../lib/dnd';
 import { parseList, type Model } from '../lib/model';
 import type { Link, System, Task } from '../lib/types';
 import { Links } from './Links';
+import { Roadmap } from './Roadmap';
 import { useToast } from './Toast';
 
 interface TreeProps { model: Model; refresh: () => Promise<void> }
@@ -12,6 +13,8 @@ interface TreeProps { model: Model; refresh: () => Promise<void> }
 export function Tree({ model, refresh }: TreeProps) {
   const { toast } = useToast();
   const [newSystem, setNewSystem] = useState('');
+  const [view, setViewState] = useState<'roadmap' | 'list'>(() => { try { return localStorage.getItem('systemsView') === 'list' ? 'list' : 'roadmap'; } catch { return 'roadmap'; } });
+  const setView = (v: 'roadmap' | 'list') => { setViewState(v); try { localStorage.setItem('systemsView', v); } catch { /* ignore */ } };
 
   const addSystem = async () => {
     const name = newSystem.trim();
@@ -55,6 +58,10 @@ export function Tree({ model, refresh }: TreeProps) {
     <section>
       <div className="panel-head" style={{ marginBottom: 10 }}>
         <h2>מערכות</h2>
+        <div className="row">
+          <button className={'tiny' + (view === 'roadmap' ? ' primary' : '')} onClick={() => setView('roadmap')}>רודמפ</button>
+          <button className={'tiny' + (view === 'list' ? ' primary' : '')} onClick={() => setView('list')}>רשימה</button>
+        </div>
         <div className="add" style={{ flex: '1 1 280px', maxWidth: 420 }}>
           <input type="text" value={newSystem} onChange={(e) => setNewSystem(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSystem()} placeholder="מערכת חדשה" />
           <button onClick={addSystem}>הוסף</button>
@@ -62,7 +69,9 @@ export function Tree({ model, refresh }: TreeProps) {
       </div>
       <div className="list" style={{ gap: 12 }}>
         {model.systems.length ? (
-          ordered.map((s, i) => (
+          ordered.map((s, i) => view === 'roadmap' ? (
+            <Roadmap key={s.id} s={s} model={model} refresh={refresh} onDeleteSystem={() => deleteSystem(s)} rowProps={dnd.rowProps(s.id)} handleProps={dnd.handleProps(s.id)} />
+          ) : (
             <SystemCard key={s.id} s={s} model={model} refresh={refresh} onDelete={() => deleteSystem(s)}
               onUp={i > 0 ? () => move(s, -1) : undefined} onDown={i < ordered.length - 1 ? () => move(s, 1) : undefined}
               rowProps={dnd.rowProps(s.id)} handleProps={dnd.handleProps(s.id)} />
