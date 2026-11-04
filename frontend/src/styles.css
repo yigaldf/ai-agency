@@ -311,3 +311,8 @@ details[open] > summary .chev { transform: rotate(-90deg); }
   .node.drop-before { box-shadow: 0 -3px 0 0 var(--accent); } .node.drop-after { box-shadow: 0 3px 0 0 var(--accent); }
   .addnode-wrap { margin: 8px 0 0; }
 }
+
+/* roadmap fixes: no strikethrough on finished chains, main-chain header stacks */
+.chain.done .title, .node.done .t { text-decoration: none; color: var(--fg); }
+.chain.main .chain-head { grid-template-columns: 1fr; }
+.chain.main .chain-head .muted { grid-column: auto; }
