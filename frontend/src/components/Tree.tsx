@@ -1,6 +1,7 @@
 import { useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { api } from '../lib/api';
 import { TODAY, uid } from '../lib/dates';
+import { useDragList } from '../lib/dnd';
 import { parseList, type Model } from '../lib/model';
 import type { Link, System, Task } from '../lib/types';
 import { Links } from './Links';
@@ -33,6 +34,12 @@ export function Tree({ model, refresh }: TreeProps) {
     await refresh();
   };
 
+  const persistSystems = async (next: System[]) => {
+    await Promise.all(next.map((x, k) => (x.order !== k + 1 ? api.putSystem({ ...x, order: k + 1 }) : Promise.resolve())));
+    await refresh();
+  };
+  const dnd = useDragList(ordered, persistSystems);
+
   const deleteSystem = async (s: System) => {
     const { system, tasks } = await api.deleteSystem(s.id);
     await refresh();
@@ -57,7 +64,8 @@ export function Tree({ model, refresh }: TreeProps) {
         {model.systems.length ? (
           ordered.map((s, i) => (
             <SystemCard key={s.id} s={s} model={model} refresh={refresh} onDelete={() => deleteSystem(s)}
-              onUp={i > 0 ? () => move(s, -1) : undefined} onDown={i < ordered.length - 1 ? () => move(s, 1) : undefined} />
+              onUp={i > 0 ? () => move(s, -1) : undefined} onDown={i < ordered.length - 1 ? () => move(s, 1) : undefined}
+              rowProps={dnd.rowProps(s.id)} handleProps={dnd.handleProps(s.id)} />
           ))
         ) : (
           <div className="empty-state">אין מערכות עדיין. הוסף אחת למעלה.</div>
@@ -76,18 +84,34 @@ const systemDone = (model: Model, s: System) => {
 const openFirst = (model: Model) => (a: Task, b: Task) => Number(model.isDone(a)) - Number(model.isDone(b)) || a.order - b.order;
 
 // ---------- system ----------
-interface SystemCardProps { s: System; model: Model; refresh: () => Promise<void>; onDelete: () => void; onUp?: () => void; onDown?: () => void }
+type DragRow = ReturnType<ReturnType<typeof useDragList>['rowProps']>;
+type DragHandle = ReturnType<ReturnType<typeof useDragList>['handleProps']>;
+interface SystemCardProps {
+  s: System; model: Model; refresh: () => Promise<void>; onDelete: () => void; onUp?: () => void; onDown?: () => void;
+  rowProps: DragRow; handleProps: DragHandle;
+}
 
-function SystemCard({ s, model, refresh, onDelete, onUp, onDown }: SystemCardProps) {
+// persists 1..n over the displayed order of a task list (top tasks of a system, or sub-tasks of a task)
+const persistTasks = (refresh: () => Promise<void>) => async (next: Task[]) => {
+  const changed = next.map((x, k) => ({ ...x, order: k + 1 })).filter((x, k) => next[k].order !== x.order);
+  if (changed.length) await api.bulkTasks(changed);
+  await refresh();
+};
+
+const Grip = (props: DragHandle) => <span className="grip" title="גרור לשינוי סדר" aria-label="גרור לשינוי סדר" {...props}>⋮⋮</span>;
+
+function SystemCard({ s, model, refresh, onDelete, onUp, onDown, rowProps, handleProps }: SystemCardProps) {
   const ts = model.topTasks(s.id).sort(openFirst(model));
+  const tdnd = useDragList(ts, persistTasks(refresh));
   const all = model.tasks.filter((t) => t.systemId === s.id && model.isLeaf(t));
   const avg = ts.length ? Math.round(ts.reduce((a, t) => a + model.prog(t), 0) / ts.length) : 0;
   const allDone = all.length > 0 && all.every((t) => model.isDone(t));
   const [open, setOpen] = useState(!allDone);
 
   return (
-    <details className="system" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+    <details {...rowProps} className={'system' + rowProps.className} open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>
+        <Grip {...handleProps} />
         <span className="chev">◀</span>
         <h3 style={{ flex: '1 1 160px' }}>{s.name}</h3>
         <span className="muted small">{all.filter((t) => model.isDone(t)).length}/{all.length}</span>
@@ -102,7 +126,7 @@ function SystemCard({ s, model, refresh, onDelete, onUp, onDown }: SystemCardPro
       </summary>
       <div className="body">
         <Links links={s.links} onChange={async (links) => { await api.putSystem({ ...s, links }); await refresh(); }} />
-        {ts.map((t) => <TaskRow key={t.id} t={t} model={model} refresh={refresh} />)}
+        {ts.map((t) => <TaskRow key={t.id} t={t} model={model} refresh={refresh} rowProps={tdnd.rowProps(t.id)} handleProps={tdnd.handleProps(t.id)} />)}
         <AddInput placeholder={`משימה חדשה תחת ${s.name}, או הדבק רשימה`} systemId={s.id} parentId={null} model={model} refresh={refresh} label="הוסף משימה" />
       </div>
     </details>
@@ -110,15 +134,17 @@ function SystemCard({ s, model, refresh, onDelete, onUp, onDown }: SystemCardPro
 }
 
 // ---------- task + sub-task ----------
-function TaskRow({ t, model, refresh }: { t: Task; model: Model; refresh: () => Promise<void> }) {
+function TaskRow({ t, model, refresh, rowProps, handleProps }: { t: Task; model: Model; refresh: () => Promise<void>; rowProps: DragRow; handleProps: DragHandle }) {
   const subs = model.children(t.id).slice().sort(openFirst(model));
+  const sdnd = useDragList(subs, persistTasks(refresh));
   const p = model.prog(t);
   const done = model.isDone(t);
   const [open, setOpen] = useState(!done);
 
   return (
-    <div className={'task' + (done ? ' done' : '') + (open ? ' open' : '')}>
+    <div {...rowProps} className={'task' + (done ? ' done' : '') + (open ? ' open' : '') + rowProps.className}>
       <div className="thead">
+        <Grip {...handleProps} />
         <button className="chevbtn" aria-label={open ? 'קפל' : 'פתח'} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <span className="chev">◀</span>
         </button>
@@ -137,7 +163,7 @@ function TaskRow({ t, model, refresh }: { t: Task; model: Model; refresh: () => 
       </div>
       {open && (
         <div className="tbody">
-          {subs.map((s) => <SubRow key={s.id} t={s} model={model} refresh={refresh} />)}
+          {subs.map((s) => <SubRow key={s.id} t={s} model={model} refresh={refresh} rowProps={sdnd.rowProps(s.id)} handleProps={sdnd.handleProps(s.id)} />)}
           <AddInput placeholder="תת־משימה חדשה, או הדבק רשימה שלמה" systemId={t.systemId} parentId={t.id} model={model} refresh={refresh} label="הוסף" sub />
         </div>
       )}
@@ -145,11 +171,12 @@ function TaskRow({ t, model, refresh }: { t: Task; model: Model; refresh: () => 
   );
 }
 
-function SubRow({ t, model, refresh }: { t: Task; model: Model; refresh: () => Promise<void> }) {
+function SubRow({ t, model, refresh, rowProps, handleProps }: { t: Task; model: Model; refresh: () => Promise<void>; rowProps: DragRow; handleProps: DragHandle }) {
   const p = model.prog(t);
   const done = model.isDone(t);
   return (
-    <div className={'sub' + (done ? ' done' : '')}>
+    <div {...rowProps} className={'sub' + (done ? ' done' : '') + rowProps.className}>
+      <Grip {...handleProps} />
       <EditableTitle t={t} refresh={refresh} title="לחיצה כפולה לעריכה" />
       <div className="ctl">
         <LeafControls t={t} done={done} refresh={refresh} />

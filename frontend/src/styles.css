@@ -250,3 +250,14 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 .reorder { display: inline-flex; gap: 2px; }
 .reorder button { padding: 0 6px; font-size: 11px; line-height: 1.6; color: var(--muted); }
 .reorder button:disabled { opacity: .25; }
+
+/* drag to reorder */
+.grip { cursor: grab; color: var(--muted); font-size: 14px; letter-spacing: -3px; padding: 0 4px; user-select: none; line-height: 1; }
+.grip:active { cursor: grabbing; }
+.dragging { opacity: .4; }
+.drop-before { box-shadow: 0 -3px 0 0 var(--accent); }
+.drop-after { box-shadow: 0 3px 0 0 var(--accent); }
+.task .thead { grid-template-columns: auto auto 1fr auto; }
+.sub { grid-template-columns: auto 1fr auto; }
+.sub .meta, .sub .links { grid-column: 1 / -1; }
+.task .thead .meta, .task .thead .links { grid-column: 1 / -1; }
