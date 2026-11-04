@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import ai, google_auth, schemas
-from .db import Base, SessionLocal, engine, get_db
+from .db import Base, SessionLocal, engine, ensure_columns, get_db
 from .logic import TaskTree, apply_progress
 from .models import CoachMessage, Day, Routine, RoutineCheck, Subscription, System, Task
 from .prompts import COACH_RULES, coach_context, feedback_prompt
@@ -73,6 +73,7 @@ def seed_if_empty() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_columns()
     seed_if_empty()
     yield
 

@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import { TODAY, daysAgo } from '../lib/dates';
 import type { Model } from '../lib/model';
 import type { Task } from '../lib/types';
+import { DateEditor, TaskDates } from './TaskDates';
 
 interface Props { model: Model; refresh: () => Promise<void> }
 
@@ -41,10 +42,10 @@ export function TaskBoard({ model, refresh }: Props) {
   const rowFor = (key: ListKey, t: Task) => {
     switch (key) {
       case 'new':
-        return <Row key={t.id} t={t} model={model}><button className="tiny primary" onClick={() => start(t)}>התחל</button></Row>;
+        return <Row key={t.id} t={t} model={model} refresh={refresh}><button className="tiny primary" onClick={() => start(t)}>התחל</button></Row>;
       case 'active':
         return (
-          <Row key={t.id} t={t} model={model} slider={(p) => setProgress(t, p)}>
+          <Row key={t.id} t={t} model={model} refresh={refresh} slider={(p) => setProgress(t, p)}>
             <button className="tiny" aria-label="פחות 10%" onClick={() => setProgress(t, (t.progress ?? 0) - 10)}>−10</button>
             <button className="tiny" aria-label="עוד 10%" onClick={() => setProgress(t, (t.progress ?? 0) + 10)}>+10</button>
             <button className="tiny" onClick={() => pause(t)}>השהה</button>
@@ -53,8 +54,7 @@ export function TaskBoard({ model, refresh }: Props) {
         );
       default:
         return (
-          <Row key={t.id} t={t} model={model}>
-            {t.doneAt && <span className="muted small">{t.doneAt}</span>}
+          <Row key={t.id} t={t} model={model} refresh={refresh}>
             <button className="tiny" onClick={() => setProgress(t, 90)}>פתח מחדש</button>
           </Row>
         );
@@ -89,7 +89,7 @@ export function TaskBoard({ model, refresh }: Props) {
   );
 }
 
-function Row({ t, model, slider, children }: { t: Task; model: Model; slider?: (p: number) => Promise<void>; children: ReactNode }) {
+function Row({ t, model, slider, children, refresh }: { t: Task; model: Model; slider?: (p: number) => Promise<void>; children: ReactNode; refresh: () => Promise<void> }) {
   const p = model.prog(t);
   const [val, setVal] = useState(p);
   useEffect(() => setVal(p), [p]);
@@ -98,6 +98,7 @@ function Row({ t, model, slider, children }: { t: Task; model: Model; slider?: (
     <div className={'brow' + (doneNow ? ' done' : '')}>
       <div className="title">{t.title}{model.isToday(t) && <span className="chip today" style={{ marginInlineStart: 6 }}>היום</span>}</div>
       <div className="path muted small">{model.pathOf(t)}</div>
+      <TaskDates t={t} done={doneNow} />
       <div className="meta">
         <div className={'bar' + (doneNow ? ' full' : '')}><i style={{ width: `${slider ? val : p}%` }} /></div>
         <span className="pct">{slider ? val : p}%</span>
@@ -107,7 +108,7 @@ function Row({ t, model, slider, children }: { t: Task; model: Model; slider?: (
           onChange={(e) => setVal(Number(e.target.value))}
           onMouseUp={() => val !== p && slider(val)} onTouchEnd={() => val !== p && slider(val)} onKeyUp={() => val !== p && slider(val)} />
       )}
-      <div className="ctl">{children}</div>
+      <div className="ctl">{children}<DateEditor t={t} done={doneNow} refresh={refresh} /></div>
     </div>
   );
 }

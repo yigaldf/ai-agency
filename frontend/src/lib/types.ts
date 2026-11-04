@@ -21,6 +21,7 @@ export interface Task {
   todayDate: string | null;
   startedAt: string | null;
   doneAt: string | null;
+  dueDate: string | null;
   links: Link[];
   createdAt: string | null;
 }

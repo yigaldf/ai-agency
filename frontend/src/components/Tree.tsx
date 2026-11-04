@@ -6,6 +6,7 @@ import { parseList, type Model } from '../lib/model';
 import type { Link, System, Task } from '../lib/types';
 import { Links } from './Links';
 import { Roadmap } from './Roadmap';
+import { DateEditor, TaskDates } from './TaskDates';
 import { useToast } from './Toast';
 
 interface TreeProps { model: Model; refresh: () => Promise<void> }
@@ -160,12 +161,14 @@ function TaskRow({ t, model, refresh, rowProps, handleProps }: { t: Task; model:
         <EditableTitle t={t} refresh={refresh} onClick={() => setOpen((o) => !o)} title="לחיצה לפתיחה, לחיצה כפולה לעריכה" />
         <div className="ctl">
           {!subs.length && <LeafControls t={t} done={done} refresh={refresh} />}
+          <DateEditor t={t} done={done} refresh={refresh} />
           <DeleteButton t={t} refresh={refresh} />
         </div>
         <div className="meta">
           <Chip t={t} done={done} model={model} />
           <Bar pct={p} full={done} />
           <span className="pct">{p}%</span>
+          <TaskDates t={t} done={done} />
           {subs.length > 0 && <span className="muted small">{subs.filter((s) => model.isDone(s)).length}/{subs.length} תת־משימות</span>}
         </div>
         <TaskLinks t={t} refresh={refresh} />
@@ -189,13 +192,14 @@ function SubRow({ t, model, refresh, rowProps, handleProps }: { t: Task; model: 
       <EditableTitle t={t} refresh={refresh} title="לחיצה כפולה לעריכה" />
       <div className="ctl">
         <LeafControls t={t} done={done} refresh={refresh} />
+        <DateEditor t={t} done={done} refresh={refresh} />
         <DeleteButton t={t} refresh={refresh} />
       </div>
       <div className="meta">
         <Chip t={t} done={done} model={model} />
         <Bar pct={p} full={done} />
         <span className="pct">{p}%</span>
-        {t.doneAt && <span className="muted small">{t.doneAt}</span>}
+        <TaskDates t={t} done={done} />
       </div>
       <TaskLinks t={t} refresh={refresh} />
     </div>
@@ -281,7 +285,7 @@ function AddInput({ placeholder, systemId, parentId, model, refresh, label, sub 
   const [v, setV] = useState('');
   const siblings = () => (parentId ? model.children(parentId) : model.topTasks(systemId)).length;
   const make = (title: string, order: number): Task => ({
-    id: uid('t'), systemId, parentId, title, progress: 0, status: 'backlog', order, todayDate: null, startedAt: null, doneAt: null, links: [], createdAt: TODAY,
+    id: uid('t'), systemId, parentId, title, progress: 0, status: 'backlog', order, todayDate: null, startedAt: null, doneAt: null, dueDate: null, links: [], createdAt: TODAY,
   });
 
   const add = async () => {

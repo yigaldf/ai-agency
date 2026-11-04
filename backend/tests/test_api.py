@@ -153,3 +153,17 @@ def test_google_oauth_not_configured():
         assert st == {"configured": False, "connected": False}
         assert client.get("/oauth/google/start", follow_redirects=False).status_code == 503
         assert client.post("/api/google/disconnect").json()["connected"] is False
+
+
+def test_task_dates():
+    with client:
+        client.put("/api/systems/sd", json={"name": "תאריכים", "order": 9})
+        base = {"systemId": "sd", "title": "עם יעד", "progress": 0, "status": "backlog", "createdAt": "2026-11-01"}
+        r = client.put("/api/tasks/td1", json={**base, "dueDate": "2026-11-20"})
+        assert r.status_code == 200 and r.json()["dueDate"] == "2026-11-20"
+        assert client.put("/api/tasks/td2", json={**base, "dueDate": "20/11/2026"}).status_code == 422
+        # finishing stamps today's date as done_at; it can then be edited
+        r = client.put("/api/tasks/td1/progress", json={"progress": 100, "today": "2026-11-04"})
+        assert r.json()["doneAt"] == "2026-11-04" and r.json()["dueDate"] == "2026-11-20"
+        r = client.put("/api/tasks/td1", json={**r.json(), "doneAt": "2026-11-03"})
+        assert r.json()["doneAt"] == "2026-11-03" and r.json()["status"] == "done"

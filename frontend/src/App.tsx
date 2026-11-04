@@ -8,6 +8,8 @@ import { Subscriptions } from './components/Subscriptions';
 import { TaskBoard } from './components/TaskBoard';
 import { ToastProvider } from './components/Toast';
 import { Tree } from './components/Tree';
+import { ViewSettingsButton } from './components/ViewSettings';
+import { ViewSettingsProvider } from './lib/settings';
 import { api } from './lib/api';
 import { TODAY, heDate } from './lib/dates';
 import { Model } from './lib/model';
@@ -52,13 +54,17 @@ export default function App() {
 
   return (
     <ToastProvider>
+     <ViewSettingsProvider>
       <div className="wrap">
         <header>
           <div>
             <h1>המסע לסוכנות AI</h1>
             <div className="muted small">יום אחד, מעט משימות, סיום לפני התחלה.</div>
           </div>
-          <div className="date">{heDate(TODAY)}</div>
+          <div className="row">
+            <ViewSettingsButton />
+            <div className="date">{heDate(TODAY)}</div>
+          </div>
         </header>
 
         <nav className="tabs" role="tablist">
@@ -89,6 +95,7 @@ export default function App() {
           </>
         )}
       </div>
+     </ViewSettingsProvider>
     </ToastProvider>
   );
 }

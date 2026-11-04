@@ -35,6 +35,7 @@ class Task(Base):
     today_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
     started_at: Mapped[str | None] = mapped_column(String(10), nullable=True)
     done_at: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    due_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
     links: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[str | None] = mapped_column(String(10), nullable=True)
 

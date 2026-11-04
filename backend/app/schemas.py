@@ -38,6 +38,7 @@ class TaskIn(Camel):
     today_date: str | None = None
     started_at: str | None = None
     done_at: str | None = None
+    due_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     links: list[Link] = []
     created_at: str | None = None
 

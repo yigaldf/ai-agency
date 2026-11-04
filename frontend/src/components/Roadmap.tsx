@@ -4,6 +4,7 @@ import { TODAY, uid } from '../lib/dates';
 import { useDragList } from '../lib/dnd';
 import type { Model } from '../lib/model';
 import type { System, Task } from '../lib/types';
+import { DateEditor, TaskDates } from './TaskDates';
 import { useToast } from './Toast';
 
 /**
@@ -34,7 +35,7 @@ export function Roadmap({ s, model, refresh, onDeleteSystem, handleProps, rowPro
   const addChain = async () => {
     const title = newChain.trim();
     if (!title) return;
-    await api.putTask({ id: uid('t'), systemId: s.id, parentId: null, title, progress: 0, status: 'backlog', order: chains.length + 1, todayDate: null, startedAt: null, doneAt: null, links: [], createdAt: TODAY });
+    await api.putTask({ id: uid('t'), systemId: s.id, parentId: null, title, progress: 0, status: 'backlog', order: chains.length + 1, todayDate: null, startedAt: null, doneAt: null, dueDate: null, links: [], createdAt: TODAY });
     setNewChain('');
     await refresh();
   };
@@ -73,6 +74,7 @@ export function Roadmap({ s, model, refresh, onDeleteSystem, handleProps, rowPro
                   <div className="t">{c.title}</div>
                   <div className="p">{model.prog(c)}%</div>
                   <div className="mini"><i style={{ width: `${model.prog(c)}%` }} /></div>
+                  <TaskDates t={c} done={model.isDone(c)} always={['due']} />
                   <div className="muted tiny-txt">{model.children(c.id).length ? `${model.children(c.id).filter((x) => model.isDone(x)).length}/${model.children(c.id).length} קוביות` : 'קובייה בודדת'}</div>
                 </div>
               </Fragment>
@@ -120,7 +122,7 @@ function Chain({ chain, chains, model, refresh, toast, setRef }: ChainProps) {
     const t = newNode.trim();
     if (!t) return;
     // first node on a single-node chain: the chain's own progress moves into the new node so nothing is lost
-    await api.putTask({ id: uid('t'), systemId: chain.systemId, parentId: chain.id, title: t, progress: single ? chain.progress : 0, status: single ? chain.status : 'backlog', order: subs.length + 1, todayDate: single ? chain.todayDate : null, startedAt: single ? chain.startedAt : null, doneAt: single ? chain.doneAt : null, links: [], createdAt: TODAY });
+    await api.putTask({ id: uid('t'), systemId: chain.systemId, parentId: chain.id, title: t, progress: single ? chain.progress : 0, status: single ? chain.status : 'backlog', order: subs.length + 1, todayDate: single ? chain.todayDate : null, startedAt: single ? chain.startedAt : null, doneAt: single ? chain.doneAt : null, dueDate: single ? chain.dueDate : null, links: [], createdAt: TODAY });
     setNewNode('');
     await refresh();
   };
@@ -176,6 +178,7 @@ interface NodeProps { t: Task; index: number; model: Model; refresh: () => Promi
 function Node({ t, index, model, refresh, toast, chains, dnd }: NodeProps) {
   const [open, setOpen] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [dates, setDates] = useState(false);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(t.title);
   const p = model.prog(t);
@@ -184,7 +187,7 @@ function Node({ t, index, model, refresh, toast, chains, dnd }: NodeProps) {
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) { setOpen(false); setMoving(false); } };
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) { setOpen(false); setMoving(false); setDates(false); } };
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, [open]);
@@ -227,6 +230,7 @@ function Node({ t, index, model, refresh, toast, chains, dnd }: NodeProps) {
       )}
       <div className="p">{p}%</div>
       <div className="mini"><i style={{ width: `${p}%` }} /></div>
+      <TaskDates t={t} done={done} always={['due']} />
       {model.isToday(t) && <span className="chip today">היום</span>}
       {open && (
         <div className="menu" onClick={(e) => e.stopPropagation()}>
@@ -248,6 +252,8 @@ function Node({ t, index, model, refresh, toast, chains, dnd }: NodeProps) {
               {chains.map((c) => <button className="mi" key={c.id} onClick={() => moveTo(c)}>→ {c.title}</button>)}
             </div>
           )}
+          {!dates && <button className="mi" onClick={() => setDates(true)}>תאריכים…</button>}
+          {dates && <DateEditor t={t} done={done} refresh={refresh} inline />}
           <button className="mi" onClick={() => { setEditing(true); setOpen(false); }}>שנה שם</button>
           <button className="mi danger" onClick={del}>מחק</button>
         </div>

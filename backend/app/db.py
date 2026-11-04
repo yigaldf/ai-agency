@@ -36,3 +36,19 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def ensure_columns() -> None:
+    """Add columns that create_all cannot add to tables that already exist (no Alembic yet)."""
+    from sqlalchemy import inspect, text
+
+    wanted = {"tasks": {"due_date": "VARCHAR(10)"}}
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table, cols in wanted.items():
+            if table not in insp.get_table_names():
+                continue
+            existing = {c["name"] for c in insp.get_columns(table)}
+            for name, ddl in cols.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
