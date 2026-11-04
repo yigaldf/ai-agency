@@ -319,13 +319,13 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 
 /* ---------- dates ---------- */
 .dates { display: inline-flex; gap: 4px; flex-wrap: wrap; }
-.dchip { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.dchip.due { border-color: var(--accent); color: var(--accent); }
-.dchip.due.soon { border-color: var(--today); color: var(--today); }
-.dchip.due.overdue { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
-.dchip.done { border-color: var(--done); color: var(--done); }
+.datechip { font-size: 11px; padding: 0 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.datechip.due { border-color: var(--accent); color: var(--accent); }
+.datechip.due.soon { border-color: var(--today); color: var(--today); }
+.datechip.due.overdue { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+.datechip.done { border-color: var(--done); color: var(--done); }
 .node .dates { justify-self: start; }
-.node .dchip { font-size: 10px; }
+.node .datechip { font-size: 10px; }
 .date-editor { position: relative; display: inline-block; }
 .date-pop { position: absolute; top: calc(100% + 4px); inset-inline-end: 0; z-index: 6; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 10px; min-width: 220px; cursor: default; }
 .date-form { display: grid; gap: 6px; }

@@ -21,7 +21,7 @@ export function TaskDates({ t, done, always = [] }: { t: Task; done: boolean; al
         const v = dateOf(t, k)!;
         const overdue = k === 'due' && !done && v < TODAY;
         const soon = k === 'due' && !done && !overdue && v <= TODAY;
-        return <span key={k} className={'dchip ' + k + (overdue ? ' overdue' : '') + (soon ? ' soon' : '')} title={DATE_LABELS[k] + ' ' + v}>{DATE_LABELS[k]} {fmt(v)}</span>;
+        return <span key={k} className={'datechip ' + k + (overdue ? ' overdue' : '') + (soon ? ' soon' : '')} title={DATE_LABELS[k] + ' ' + v}>{DATE_LABELS[k]} {fmt(v)}</span>;
       })}
     </span>
   );
