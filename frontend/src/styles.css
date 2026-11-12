@@ -334,3 +334,13 @@ details[open] > summary .chev { transform: rotate(-90deg); }
 .vs { position: relative; }
 .vs-pop { position: absolute; top: calc(100% + 4px); inset-inline-start: 0; z-index: 20; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 10px 12px; min-width: 220px; display: grid; gap: 6px; }
 .vs-pop label { gap: 6px; }
+
+/* system status: the chip-button on each system, its menu, and the counts in the status sub-tabs */
+.status-menu { position: relative; display: inline-flex; }
+.status-btn { font-size: 12px; padding: 1px 10px; border-radius: 999px; font-weight: 500; white-space: nowrap; }
+.st-new { background: var(--today-soft); color: var(--today); border-color: var(--today-soft); }
+.st-active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-soft); }
+.st-inactive { background: var(--panel-2); color: var(--muted); border-color: var(--line); }
+.st-archived { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+.status-menu .menu { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; z-index: 5; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); min-width: 150px; padding: 6px; display: grid; gap: 2px; cursor: default; }
+.status-menu .menu-title { padding: 2px 8px 4px; }

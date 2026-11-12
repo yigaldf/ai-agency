@@ -3,7 +3,8 @@ import { api } from '../lib/api';
 import { TODAY, uid } from '../lib/dates';
 import { useDragList } from '../lib/dnd';
 import type { Model } from '../lib/model';
-import type { System, Task } from '../lib/types';
+import type { System, SystemStatus, Task } from '../lib/types';
+import { StatusMenu } from './SystemStatus';
 import { DateEditor, TaskDates } from './TaskDates';
 import { useToast } from './Toast';
 
@@ -14,9 +15,13 @@ import { useToast } from './Toast';
  * main chain = the system's top-level tasks, one node per chain (shown when there is more than one)
  * The data model is unchanged: moving a node between chains is a parentId change.
  */
-interface Props { s: System; model: Model; refresh: () => Promise<void>; onDeleteSystem: () => void; handleProps: object; rowProps: { className: string } }
+interface Props {
+  s: System; model: Model; refresh: () => Promise<void>; onStatus: (to: SystemStatus) => void;
+  onDeleteSystem?: () => void; // only for archived systems
+  handleProps: object; rowProps: { className: string };
+}
 
-export function Roadmap({ s, model, refresh, onDeleteSystem, handleProps, rowProps }: Props) {
+export function Roadmap({ s, model, refresh, onStatus, onDeleteSystem, handleProps, rowProps }: Props) {
   const { toast } = useToast();
   const chains = model.topTasks(s.id);
   const leaves = model.tasks.filter((t) => t.systemId === s.id && model.isLeaf(t));
@@ -50,11 +55,12 @@ export function Roadmap({ s, model, refresh, onDeleteSystem, handleProps, rowPro
           <div className={'bar' + (leaves.length && doneCount === leaves.length ? ' full' : '')}><i style={{ width: `${avg}%` }} /></div>
           <span className="pct">{avg}%</span>
           {leaves.length > 0 && doneCount === leaves.length && <span className="chip done">הסתיים</span>}
+          <StatusMenu s={s} onChange={onStatus} />
         </div>
         <div className="row">
           <input type="text" className="small-input" value={newChain} onChange={(e) => setNewChain(e.target.value)} onKeyDown={(e: KeyboardEvent) => e.key === 'Enter' && addChain()} placeholder="שרשרת חדשה (שם נושא)" />
           <button className="tiny primary" onClick={addChain}>+ שרשרת</button>
-          <button className="trash" title="מחק מערכת" aria-label="מחק מערכת" onClick={onDeleteSystem}>🗑</button>
+          {onDeleteSystem && <button className="trash" title="מחק מערכת" aria-label="מחק מערכת" onClick={onDeleteSystem}>🗑</button>}
         </div>
       </div>
 

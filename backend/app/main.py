@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from . import ai, google_auth, schemas
 from .db import Base, SessionLocal, engine, ensure_columns, get_db
-from .logic import TaskTree, apply_progress
+from .logic import TaskTree, apply_progress, is_activity, task_started
 from .models import CoachMessage, Day, Routine, RoutineCheck, Subscription, System, Task
 from .prompts import COACH_RULES, coach_context, feedback_prompt
 
@@ -30,6 +30,8 @@ def import_payload(db: Session, payload: schemas.ImportPayload) -> dict[str, int
         row = db.get(System, s.id) or System(id=s.id)
         row.name, row.order, row.created_at = s.name, s.order, s.created_at
         row.links = [l.model_dump() for l in s.links]
+        if s.status:
+            row.status = s.status
         db.add(row)
     db.flush()
     for t in sorted(payload.tasks, key=lambda t: 0 if t.parent_id is None else 1):
@@ -48,8 +50,35 @@ def import_payload(db: Session, payload: schemas.ImportPayload) -> dict[str, int
         row = db.get(Subscription, item.id) or Subscription(id=item.id)
         _set_sub(row, schemas.SubscriptionIn(**item.model_dump(exclude={"id"})))
         db.add(row)
+    db.flush()
+    backfill_system_status(db)
     db.commit()
     return {"systems": len(payload.systems), "tasks": len(payload.tasks), "days": len(payload.days), "coach": len(payload.coach), "subscriptions": len(payload.subscriptions)}
+
+
+def backfill_system_status(db: Session) -> None:
+    """Systems without a status (saved before statuses existed, or imported without one):
+    active when any of their tasks has started, new otherwise."""
+    missing = db.scalars(select(System).where(System.status.is_(None))).all()
+    if not missing:
+        return
+    started = {t.system_id for t in db.scalars(select(Task)).all() if task_started(t.progress, t.status)}
+    for s in missing:
+        s.status = "active" if s.id in started else "new"
+
+
+def wake_system(db: Session, system_id: str) -> None:
+    """Activity on a task moves a new or inactive system to active. Archived systems stay put."""
+    s = db.get(System, system_id)
+    if s and s.status in ("new", "inactive", None):
+        s.status = "active"
+
+
+def live_data(db: Session) -> tuple[list[System], list[Task]]:
+    """Systems and tasks the AI and the daily plan see: everything except archived systems."""
+    systems = [s for s in db.scalars(select(System)).all() if s.status != "archived"]
+    ids = {s.id for s in systems}
+    return systems, [t for t in db.scalars(select(Task)).all() if t.system_id in ids]
 
 
 def seed_if_empty() -> None:
@@ -75,6 +104,9 @@ async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     ensure_columns()
     seed_if_empty()
+    with SessionLocal() as db:
+        backfill_system_status(db)
+        db.commit()
     yield
 
 
@@ -128,6 +160,10 @@ def upsert_system(system_id: str, body: schemas.SystemIn, db: Session = Depends(
     s = db.get(System, system_id) or System(id=system_id)
     s.name, s.order, s.created_at = body.name, body.order, body.created_at
     s.links = [l.model_dump() for l in body.links]
+    if body.status:
+        s.status = body.status
+    elif not s.status:
+        s.status = "new"
     db.add(s)
     db.commit()
     return s
@@ -138,6 +174,8 @@ def delete_system(system_id: str, db: Session = Depends(get_db)):
     s = db.get(System, system_id)
     if not s:
         raise HTTPException(404)
+    if s.status != "archived":
+        raise HTTPException(409, "only archived systems can be deleted")
     tasks = db.scalars(select(Task).where(Task.system_id == system_id)).all()
     out = {
         "system": schemas.SystemOut.model_validate(s).model_dump(by_alias=True),
@@ -160,8 +198,12 @@ def _set_task(t: Task, body: schemas.TaskIn) -> None:
 def upsert_task(task_id: str, body: schemas.TaskIn, db: Session = Depends(get_db)):
     if not db.get(System, body.system_id):
         raise HTTPException(400, "unknown system")
-    t = db.get(Task, task_id) or Task(id=task_id)
+    t = db.get(Task, task_id)
+    old = (t.progress, t.status) if t else None
+    t = t or Task(id=task_id)
     _set_task(t, body)
+    if is_activity(old, t.progress, t.status):
+        wake_system(db, t.system_id)
     db.add(t)
     db.commit()
     return t
@@ -175,8 +217,12 @@ def upsert_tasks(body: list[schemas.TaskWithId], db: Session = Depends(get_db)):
     for item in ordered:
         if not db.get(System, item.system_id):
             raise HTTPException(400, f"unknown system {item.system_id}")
-        t = db.get(Task, item.id) or Task(id=item.id)
+        t = db.get(Task, item.id)
+        old = (t.progress, t.status) if t else None
+        t = t or Task(id=item.id)
         _set_task(t, schemas.TaskIn(**item.model_dump(exclude={"id"})))
+        if is_activity(old, t.progress, t.status):
+            wake_system(db, t.system_id)
         db.add(t)
         out.append(t)
     db.commit()
@@ -214,7 +260,10 @@ def set_progress(task_id: str, body: schemas.ProgressIn, db: Session = Depends(g
     if not t:
         raise HTTPException(404)
     frm = t.progress or 0
+    old = (t.progress, t.status)
     apply_progress(t, body.progress, body.today)
+    if is_activity(old, t.progress, t.status):
+        wake_system(db, t.system_id)
     _log_event(db, body.today, t, frm, t.progress)
     db.commit()
     return t
@@ -239,7 +288,7 @@ def patch_day(day_id: str, body: schemas.DayPatch, db: Session = Depends(get_db)
 
 # ---------- Claude: morning feedback ----------
 def _plan_for(db: Session, today: str) -> list[dict]:
-    tasks = db.scalars(select(Task)).all()
+    _, tasks = live_data(db)
     tree = TaskTree(tasks, today)
     return [{"id": t.id, "title": t.title} for t in tasks if tree.is_today(t)]
 
@@ -249,9 +298,10 @@ async def feedback(body: schemas.FeedbackIn):
     if not ai.enabled():
         raise HTTPException(503, "ANTHROPIC_API_KEY is not set")
     with SessionLocal() as db:
+        systems, tasks = live_data(db)
         prompt = feedback_prompt(
-            db.scalars(select(System)).all(),
-            db.scalars(select(Task)).all(),
+            systems,
+            tasks,
             db.scalars(select(Day)).all(),
             body.today,
             body.yesterday_text,
@@ -287,7 +337,8 @@ async def coach_send(body: schemas.CoachMessageIn):
         db.add(CoachMessage(role="user", content=body.content.strip()))
         db.commit()
         history = db.scalars(select(CoachMessage).order_by(CoachMessage.id.desc()).limit(20)).all()[::-1]
-        ctx = coach_context(db.scalars(select(System)).all(), db.scalars(select(Task)).all(), db.scalars(select(Day)).all(), body.today)
+        systems, tasks = live_data(db)
+        ctx = coach_context(systems, tasks, db.scalars(select(Day)).all(), body.today)
     turns = [{"role": "user", "content": COACH_RULES + "\n\nמצב נוכחי מהדשבורד:\n" + ctx}]
     turns += [{"role": m.role, "content": m.content} for m in history]
 

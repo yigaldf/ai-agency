@@ -20,6 +20,8 @@ class System(Base):
     order: Mapped[int] = mapped_column(Integer, default=0)
     links: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[str | None] = mapped_column(String(10), nullable=True)  # YYYY-MM-DD, client's local date
+    # new | active | inactive | archived. NULL only until backfill_system_status() runs (rows saved before statuses existed)
+    status: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
 
 class Task(Base):

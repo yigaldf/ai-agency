@@ -74,6 +74,22 @@ class TaskTree:
         return out
 
 
+def task_started(progress: int | None, status: str | None) -> bool:
+    return (progress or 0) > 0 or status in ("active", "done")
+
+
+def is_activity(old: tuple[int, str] | None, progress: int | None, status: str | None) -> bool:
+    """Work moved forward on a task: its progress went up, or it was started or finished.
+
+    `old` is (progress, status) before the change, or None for a task that did not exist yet.
+    Reordering, renaming or lowering progress is not activity.
+    """
+    if old is None:
+        return task_started(progress, status)
+    old_progress, old_status = old
+    return (progress or 0) > (old_progress or 0) or (status != old_status and status in ("active", "done"))
+
+
 def apply_progress(t: Task, to: int, today: str) -> None:
     """Same transitions as the dashboard's setProgress()."""
     to = max(0, min(100, int(to)))

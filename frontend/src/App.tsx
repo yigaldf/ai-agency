@@ -51,6 +51,12 @@ export default function App() {
   };
 
   const model = useMemo(() => new Model(state?.systems ?? [], state?.tasks ?? []), [state]);
+  // archived systems and their tasks stay out of the board, the stats and the morning plan
+  const liveModel = useMemo(() => {
+    const systems = (state?.systems ?? []).filter((s) => s.status !== 'archived');
+    const ids = new Set(systems.map((s) => s.id));
+    return new Model(systems, (state?.tasks ?? []).filter((t) => ids.has(t.systemId)));
+  }, [state]);
 
   return (
     <ToastProvider>
@@ -88,9 +94,9 @@ export default function App() {
           <Coach messages={state.coach} aiEnabled={state.ai.enabled} refresh={refresh} />
         ) : (
           <>
-            <Stats model={model} days={state.days} />
-            <TaskBoard model={model} refresh={refresh} />
-            <Morning model={model} days={state.days} aiEnabled={state.ai.enabled} refresh={refresh} />
+            <Stats model={liveModel} days={state.days} />
+            <TaskBoard model={liveModel} refresh={refresh} />
+            <Morning model={liveModel} days={state.days} aiEnabled={state.ai.enabled} refresh={refresh} />
             <History days={state.days} />
           </>
         )}
