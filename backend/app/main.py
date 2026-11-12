@@ -110,7 +110,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="המסע לסוכנות AI", docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=lifespan)
+app = FastAPI(title="Open Biz - ניהול משימות", docs_url="/api/docs", openapi_url="/api/openapi.json", lifespan=lifespan)
 
 PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
 STATIC_DIR = Path(os.environ.get("STATIC_DIR", Path(__file__).resolve().parent.parent / "static"))

@@ -64,7 +64,7 @@ export default function App() {
       <div className="wrap">
         <header>
           <div>
-            <h1>המסע לסוכנות AI</h1>
+            <h1>Open Biz - ניהול משימות</h1>
             <div className="muted small">יום אחד, מעט משימות, סיום לפני התחלה.</div>
           </div>
           <div className="row">
