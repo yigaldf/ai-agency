@@ -3,9 +3,10 @@ import { api } from '../lib/api';
 import { TODAY, uid } from '../lib/dates';
 import { useDragList } from '../lib/dnd';
 import { parseList, type Model } from '../lib/model';
-import type { Link, System, Task } from '../lib/types';
+import type { Link, System, SystemStatus, Task } from '../lib/types';
 import { Links } from './Links';
 import { Roadmap } from './Roadmap';
+import { SYSTEM_STATUSES, StatusMenu, isSystemStatus, statusLabel } from './SystemStatus';
 import { DateEditor, TaskDates } from './TaskDates';
 import { useToast } from './Toast';
 
@@ -17,34 +18,62 @@ export function Tree({ model, refresh }: TreeProps) {
   const [view, setViewState] = useState<'roadmap' | 'list'>(() => { try { return localStorage.getItem('systemsView') === 'list' ? 'list' : 'roadmap'; } catch { return 'roadmap'; } });
   const setView = (v: 'roadmap' | 'list') => { setViewState(v); try { localStorage.setItem('systemsView', v); } catch { /* ignore */ } };
 
+  // which status the list shows; remembered per browser
+  const [statusView, setStatusViewState] = useState<SystemStatus>(() => { try { const v = localStorage.getItem('systemsStatus'); return isSystemStatus(v) ? v : 'active'; } catch { return 'active'; } });
+  const setStatusView = (v: SystemStatus) => { setStatusViewState(v); try { localStorage.setItem('systemsStatus', v); } catch { /* ignore */ } };
+
   const addSystem = async () => {
     const name = newSystem.trim();
     if (!name) return;
-    await api.putSystem({ id: uid('s'), name, order: model.systems.length + 1, links: [], createdAt: TODAY });
+    const order = Math.max(0, ...model.systems.map((s) => s.order)) + 1;
+    await api.putSystem({ id: uid('s'), name, order, links: [], createdAt: TODAY, status: 'new' });
     setNewSystem('');
     await refresh();
+    // a new system lands in "new"; follow it there so it does not seem to vanish
+    if (statusView !== 'new') {
+      setStatusView('new');
+      toast(`"${name}" נוספה לסטטוס חדש`);
+    }
   };
 
   const ordered = model.systems.slice().sort((a, b) => Number(systemDone(model, a)) - Number(systemDone(model, b)) || a.order - b.order);
+  const visible = ordered.filter((s) => s.status === statusView);
+  const count = (k: SystemStatus) => model.systems.filter((s) => s.status === k).length;
 
-  // swap with the neighbour in the displayed order and persist 1..n
+  // the list shows one status: put its new order back in place among the others and renumber all 1..n
+  const persistOrder = async (next: System[]) => {
+    const ids = new Set(next.map((x) => x.id));
+    let k = 0;
+    const merged = ordered.map((x) => (ids.has(x.id) ? next[k++] : x));
+    await Promise.all(merged.map((x, i) => (x.order !== i + 1 ? api.putSystem({ ...x, order: i + 1 }) : Promise.resolve())));
+    await refresh();
+  };
+
+  // swap with the neighbour in the displayed list
   const move = async (s: System, dir: -1 | 1) => {
-    const i = ordered.findIndex((x) => x.id === s.id);
+    const i = visible.findIndex((x) => x.id === s.id);
     const j = i + dir;
-    if (j < 0 || j >= ordered.length) return;
-    const next = ordered.slice();
+    if (j < 0 || j >= visible.length) return;
+    const next = visible.slice();
     [next[i], next[j]] = [next[j], next[i]];
-    await Promise.all(next.map((x, k) => (x.order !== k + 1 ? api.putSystem({ ...x, order: k + 1 }) : Promise.resolve())));
+    await persistOrder(next);
+  };
+  const dnd = useDragList(visible, persistOrder);
+
+  const changeStatus = async (s: System, to: SystemStatus) => {
+    await api.putSystem({ ...s, status: to });
     await refresh();
+    toast(`"${s.name}" עברה לסטטוס ${statusLabel(to)}`, async () => {
+      await api.putSystem(s);
+      await refresh();
+      toast('שוחזר');
+    });
   };
 
-  const persistSystems = async (next: System[]) => {
-    await Promise.all(next.map((x, k) => (x.order !== k + 1 ? api.putSystem({ ...x, order: k + 1 }) : Promise.resolve())));
-    await refresh();
-  };
-  const dnd = useDragList(ordered, persistSystems);
-
+  // only offered for archived systems, and only after an explicit yes
   const deleteSystem = async (s: System) => {
+    const n = model.tasks.filter((t) => t.systemId === s.id).length;
+    if (!window.confirm(`האם אתה בטוח שאתה רוצה למחוק את "${s.name}"?${n ? `\nיימחקו איתה גם ${n} משימות.` : ''}`)) return;
     const { system, tasks } = await api.deleteSystem(s.id);
     await refresh();
     toast(`נמחקה המערכת ${s.name}${tasks.length ? ` (+${tasks.length} משימות)` : ''}`, async () => {
@@ -68,17 +97,28 @@ export function Tree({ model, refresh }: TreeProps) {
           <button onClick={addSystem}>הוסף</button>
         </div>
       </div>
+      <nav className="subtabs" role="tablist" aria-label="סטטוס מערכות" style={{ marginBottom: 12 }}>
+        {SYSTEM_STATUSES.map((x) => (
+          <button key={x.key} role="tab" aria-selected={statusView === x.key} className={'subtab' + (statusView === x.key ? ' on' : '')} onClick={() => setStatusView(x.key)}>
+            {x.label} <span className={'chip st-' + x.key}>{count(x.key)}</span>
+          </button>
+        ))}
+      </nav>
       <div className="list" style={{ gap: 12 }}>
-        {model.systems.length ? (
-          ordered.map((s, i) => view === 'roadmap' ? (
-            <Roadmap key={s.id} s={s} model={model} refresh={refresh} onDeleteSystem={() => deleteSystem(s)} rowProps={dnd.rowProps(s.id)} handleProps={dnd.handleProps(s.id)} />
-          ) : (
-            <SystemCard key={s.id} s={s} model={model} refresh={refresh} onDelete={() => deleteSystem(s)}
-              onUp={i > 0 ? () => move(s, -1) : undefined} onDown={i < ordered.length - 1 ? () => move(s, 1) : undefined}
-              rowProps={dnd.rowProps(s.id)} handleProps={dnd.handleProps(s.id)} />
-          ))
+        {visible.length ? (
+          visible.map((s, i) => {
+            const onDelete = s.status === 'archived' ? () => deleteSystem(s) : undefined;
+            const onStatus = (to: SystemStatus) => changeStatus(s, to);
+            return view === 'roadmap' ? (
+              <Roadmap key={s.id} s={s} model={model} refresh={refresh} onDeleteSystem={onDelete} onStatus={onStatus} rowProps={dnd.rowProps(s.id)} handleProps={dnd.handleProps(s.id)} />
+            ) : (
+              <SystemCard key={s.id} s={s} model={model} refresh={refresh} onDelete={onDelete} onStatus={onStatus}
+                onUp={i > 0 ? () => move(s, -1) : undefined} onDown={i < visible.length - 1 ? () => move(s, 1) : undefined}
+                rowProps={dnd.rowProps(s.id)} handleProps={dnd.handleProps(s.id)} />
+            );
+          })
         ) : (
-          <div className="empty-state">אין מערכות עדיין. הוסף אחת למעלה.</div>
+          <div className="empty-state">{model.systems.length ? `אין מערכות בסטטוס ${statusLabel(statusView)}.` : 'אין מערכות עדיין. הוסף אחת למעלה.'}</div>
         )}
       </div>
     </section>
@@ -97,7 +137,9 @@ const openFirst = (model: Model) => (a: Task, b: Task) => Number(model.isDone(a)
 type DragRow = ReturnType<ReturnType<typeof useDragList>['rowProps']>;
 type DragHandle = ReturnType<ReturnType<typeof useDragList>['handleProps']>;
 interface SystemCardProps {
-  s: System; model: Model; refresh: () => Promise<void>; onDelete: () => void; onUp?: () => void; onDown?: () => void;
+  s: System; model: Model; refresh: () => Promise<void>; onStatus: (to: SystemStatus) => void;
+  onDelete?: () => void; // only for archived systems
+  onUp?: () => void; onDown?: () => void;
   rowProps: DragRow; handleProps: DragHandle;
 }
 
@@ -110,7 +152,7 @@ const persistTasks = (refresh: () => Promise<void>) => async (next: Task[]) => {
 
 const Grip = (props: DragHandle) => <span className="grip" title="גרור לשינוי סדר" aria-label="גרור לשינוי סדר" {...props}>⋮⋮</span>;
 
-function SystemCard({ s, model, refresh, onDelete, onUp, onDown, rowProps, handleProps }: SystemCardProps) {
+function SystemCard({ s, model, refresh, onStatus, onDelete, onUp, onDown, rowProps, handleProps }: SystemCardProps) {
   const ts = model.topTasks(s.id).sort(openFirst(model));
   const tdnd = useDragList(ts, persistTasks(refresh));
   const all = model.tasks.filter((t) => t.systemId === s.id && model.isLeaf(t));
@@ -128,11 +170,12 @@ function SystemCard({ s, model, refresh, onDelete, onUp, onDown, rowProps, handl
         <Bar pct={avg} full={allDone} />
         <span className="pct">{avg}%</span>
         {allDone && <span className="chip done">הסתיים</span>}
+        <StatusMenu s={s} onChange={onStatus} />
         <span className="reorder">
           <button className="tiny ghost" title="הזז למעלה" aria-label="הזז למעלה" disabled={!onUp} onClick={(e) => { e.preventDefault(); onUp?.(); }}>▲</button>
           <button className="tiny ghost" title="הזז למטה" aria-label="הזז למטה" disabled={!onDown} onClick={(e) => { e.preventDefault(); onDown?.(); }}>▼</button>
         </span>
-        <button className="trash" title="מחק מערכת" aria-label="מחק מערכת" onClick={(e) => { e.preventDefault(); onDelete(); }}>🗑</button>
+        {onDelete && <button className="trash" title="מחק מערכת" aria-label="מחק מערכת" onClick={(e) => { e.preventDefault(); onDelete(); }}>🗑</button>}
       </summary>
       <div className="body">
         <Links links={s.links} onChange={async (links) => { await api.putSystem({ ...s, links }); await refresh(); }} />

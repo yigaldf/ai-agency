@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -17,15 +17,26 @@ class Link(Camel):
     url: str
 
 
+SYSTEM_STATUS = "^(new|active|inactive|archived)$"
+
+
 class SystemIn(Camel):
     name: str = Field(min_length=1, max_length=200)
     order: int = 0
     links: list[Link] = []
     created_at: str | None = None
+    # omitted = keep the current status (a brand-new system starts as "new")
+    status: str | None = Field(default=None, pattern=SYSTEM_STATUS)
 
 
 class SystemOut(SystemIn):
     id: str
+    status: str = "new"
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _default_status(cls, v: str | None) -> str:
+        return v or "new"
 
 
 class TaskIn(Camel):

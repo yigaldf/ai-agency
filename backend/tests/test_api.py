@@ -52,7 +52,9 @@ def test_full_flow():
         assert client.post("/api/tasks/bulk", json=r.json()).status_code == 200
         assert len(client.get("/api/state").json()["tasks"]) == 3
 
-        # delete system cascades
+        # delete system cascades, but only once it is archived
+        assert client.delete("/api/systems/s1").status_code == 409
+        client.put("/api/systems/s1", json={"name": "מערכת א", "order": 1, "status": "archived"})
         r = client.delete("/api/systems/s1")
         assert len(r.json()["tasks"]) == 3
         assert client.get("/api/state").json()["systems"] == []
@@ -95,6 +97,7 @@ def test_seed_file_imports_into_empty_db(tmp_path):
     with client:
         # wipe anything earlier tests left behind so the import endpoint is exercised on its own
         for s in client.get("/api/state").json()["systems"]:
+            client.put(f"/api/systems/{s['id']}", json={**s, "status": "archived"})
             client.delete(f"/api/systems/{s['id']}")
         r = client.post("/api/import", json=payload)
         assert r.status_code == 200, r.text
@@ -103,6 +106,9 @@ def test_seed_file_imports_into_empty_db(tmp_path):
         assert len(state["systems"]) == len(payload["systems"])
         assert len(state["tasks"]) == len(payload["tasks"])
         assert {t["parentId"] for t in state["tasks"] if t["parentId"]} <= {t["id"] for t in state["tasks"]}
+        # the seed has no statuses: systems with started work come back active, the rest new
+        started = {t["systemId"] for t in payload["tasks"] if t["progress"] > 0 or t["status"] in ("active", "done")}
+        assert {s["id"]: s["status"] for s in state["systems"]} == {s["id"]: ("active" if s["id"] in started else "new") for s in payload["systems"]}
         assert len(state["coach"]) >= len(payload["coach"])
         # idempotent: importing again does not duplicate systems/tasks
         client.post("/api/import", json={**payload, "coach": []})
@@ -167,3 +173,52 @@ def test_task_dates():
         assert r.json()["doneAt"] == "2026-11-04" and r.json()["dueDate"] == "2026-11-20"
         r = client.put("/api/tasks/td1", json={**r.json(), "doneAt": "2026-11-03"})
         assert r.json()["doneAt"] == "2026-11-03" and r.json()["status"] == "done"
+
+
+def test_system_statuses():
+    with client:
+        sys = {"name": "סטטוסים", "order": 20}
+        assert client.put("/api/systems/st1", json=sys).json()["status"] == "new"
+        assert client.put("/api/systems/st1", json={**sys, "status": "paused"}).status_code == 422
+
+        status = lambda: next(s["status"] for s in client.get("/api/state").json()["systems"] if s["id"] == "st1")  # noqa: E731
+        base = {"systemId": "st1", "progress": 0, "status": "backlog", "createdAt": TODAY}
+
+        # a task with no progress is not activity; progress above 0 moves new -> active
+        client.put("/api/tasks/st-t1", json={**base, "title": "א", "order": 1})
+        assert status() == "new"
+        client.put("/api/tasks/st-t1/progress", json={"progress": 10, "today": TODAY})
+        assert status() == "active"
+
+        # manual move; saving the system without a status (rename, reorder) keeps it
+        client.put("/api/systems/st1", json={**sys, "status": "inactive"})
+        client.put("/api/systems/st1", json={**sys, "name": "סטטוסים 2"})
+        assert status() == "inactive"
+
+        # reordering or lowering progress is not activity
+        t = client.get("/api/state").json()["tasks"]
+        t1 = next(x for x in t if x["id"] == "st-t1")
+        client.post("/api/tasks/bulk", json=[{**t1, "order": 5}])
+        client.put("/api/tasks/st-t1/progress", json={"progress": 0, "today": TODAY})
+        assert status() == "inactive"
+
+        # pausing a task ("השהה") is not activity; starting it again ("התחל") is: inactive -> active
+        client.put("/api/tasks/st-t1", json={**t1, "progress": 0, "status": "backlog"})
+        assert status() == "inactive"
+        client.put("/api/tasks/st-t1", json={**t1, "progress": 0, "status": "active"})
+        assert status() == "active"
+
+        # an archived system never wakes up by itself, and is hidden from the AI and the daily plan
+        client.put("/api/systems/st1", json={**sys, "status": "archived"})
+        client.put("/api/tasks/st-t1/progress", json={"progress": 60, "today": TODAY})
+        assert status() == "archived"
+        from app.db import SessionLocal
+        from app.main import live_data
+
+        with SessionLocal() as db:
+            systems, tasks = live_data(db)
+        assert "st1" not in {s.id for s in systems} and "st-t1" not in {x.id for x in tasks}
+
+        # only archived systems can be deleted
+        assert client.delete("/api/systems/st1").status_code == 200
+        assert client.delete("/api/systems/st1").status_code == 404

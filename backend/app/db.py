@@ -42,7 +42,7 @@ def ensure_columns() -> None:
     """Add columns that create_all cannot add to tables that already exist (no Alembic yet)."""
     from sqlalchemy import inspect, text
 
-    wanted = {"tasks": {"due_date": "VARCHAR(10)"}}
+    wanted = {"tasks": {"due_date": "VARCHAR(10)"}, "systems": {"status": "VARCHAR(20)"}}
     insp = inspect(engine)
     with engine.begin() as conn:
         for table, cols in wanted.items():

@@ -1,11 +1,14 @@
 export interface Link { label: string; url: string }
 
+export type SystemStatus = 'new' | 'active' | 'inactive' | 'archived';
+
 export interface System {
   id: string;
   name: string;
   order: number;
   links: Link[];
   createdAt: string | null;
+  status: SystemStatus;
 }
 
 export type TaskStatus = 'backlog' | 'active' | 'done';
